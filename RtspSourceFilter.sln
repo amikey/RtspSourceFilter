@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30110.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "live555", "live555\live555.vcxproj", "{3BE86A9B-FF7A-4649-9FED-0F553B618A77}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RtspSourceFilter", "RtspSourceFilter\RtspSourceFilter.vcxproj", "{6FB45804-EE28-498E-A879-B8EB3D9DDF86}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3BE86A9B-FF7A-4649-9FED-0F553B618A77} = {3BE86A9B-FF7A-4649-9FED-0F553B618A77}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RtspSourceFilterTest", "RtspSourceFilterTest\RtspSourceFilterTest.vcxproj", "{ED349FD9-3283-4959-8CBB-F644654B081C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3BE86A9B-FF7A-4649-9FED-0F553B618A77}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3BE86A9B-FF7A-4649-9FED-0F553B618A77}.Debug|Win32.Build.0 = Debug|Win32
+		{3BE86A9B-FF7A-4649-9FED-0F553B618A77}.Release|Win32.ActiveCfg = Release|Win32
+		{3BE86A9B-FF7A-4649-9FED-0F553B618A77}.Release|Win32.Build.0 = Release|Win32
+		{6FB45804-EE28-498E-A879-B8EB3D9DDF86}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6FB45804-EE28-498E-A879-B8EB3D9DDF86}.Debug|Win32.Build.0 = Debug|Win32
+		{6FB45804-EE28-498E-A879-B8EB3D9DDF86}.Release|Win32.ActiveCfg = Release|Win32
+		{6FB45804-EE28-498E-A879-B8EB3D9DDF86}.Release|Win32.Build.0 = Release|Win32
+		{ED349FD9-3283-4959-8CBB-F644654B081C}.Debug|Win32.ActiveCfg = Debug|Win32
+		{ED349FD9-3283-4959-8CBB-F644654B081C}.Debug|Win32.Build.0 = Debug|Win32
+		{ED349FD9-3283-4959-8CBB-F644654B081C}.Release|Win32.ActiveCfg = Release|Win32
+		{ED349FD9-3283-4959-8CBB-F644654B081C}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
