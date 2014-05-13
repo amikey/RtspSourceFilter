@@ -33,8 +33,6 @@ void ProxyMediaSink::afterGettingFrame(unsigned frameSize, unsigned numTruncated
     }
     else
     {
-        /// TODO: Should we ignore the packet and increase the buffer by some factor?
-        _ASSERT(false);
     }
 
     continuePlaying();
