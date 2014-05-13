@@ -694,7 +694,7 @@ void RtspSourceFilter::HandlePlayResponse(int resultCode, char* resultString)
         _interPacketGapCheckTimerTask = _scheduler->scheduleDelayedTask(interPacketGapMaxTime*1000, 
            &RtspSourceFilter::CheckInterPacketGaps, this);
         // Create timerTask for session keep-alive (use OPTIONS request to sustain session)
-         _livenessCommandTask = _scheduler->scheduleDelayedTask(_sessionTimeout*1000000, 
+         _livenessCommandTask = _scheduler->scheduleDelayedTask(_sessionTimeout/3*1000000, 
             &RtspSourceFilter::SendLivenessCommand, this);
 
          if (_sessionDuration > 0)
