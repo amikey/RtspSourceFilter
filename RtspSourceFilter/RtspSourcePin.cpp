@@ -2,6 +2,7 @@
 #include "MediaPacketSample.h"
 #include "ConcurrentQueue.h"
 #include "H264StreamParser.h"
+#include "Debug.h"
 
 #include <Windows.h>
 #include <DShow.h>
@@ -22,11 +23,6 @@ namespace
     HRESULT GetMediaTypeAAC(CMediaType& mediaType, MediaSubsession& mediaSubsession);
 
     bool IsIdrFrame(const MediaPacketSample& mediaPacket);
-#ifdef _DEBUG
-    void DebugLog(const char* fmt, ...);
-#else
-#define DebugLog(fmt, ...)
-#endif
 }
 
 RtspSourcePin::RtspSourcePin(HRESULT* phr, CSource* pFilter, 
@@ -437,19 +433,4 @@ namespace
         // More NAL types: http://gentlelogic.blogspot.com/2011/11/exploring-h264-part-2-h264-bitstream.html
         return (data[0] & 0x1F) == 5;
     }
-
-#ifdef DEBUG
-#pragma warning(push)
-#pragma warning(disable : 4995)
-    void DebugLog(const char* fmt, ...)
-    {
-        char dest[1024];
-        va_list argptr;
-        va_start(argptr, fmt);
-        vsprintf(dest, fmt, argptr);
-        va_end(argptr);
-        OutputDebugStringA(dest);
-    }
-#pragma warning(pop)
-#endif
 }

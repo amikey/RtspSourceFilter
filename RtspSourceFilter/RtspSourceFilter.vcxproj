@@ -90,6 +90,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Debug.cpp" />
     <ClCompile Include="H264StreamParser.cpp" />
     <ClCompile Include="ProxyMediaSink.cpp" />
     <ClCompile Include="RtspError.cpp" />
@@ -102,6 +103,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ConcurrentQueue.h" />
+    <ClInclude Include="Debug.h" />
     <ClInclude Include="MediaPacketSample.h" />
     <ClInclude Include="ProxyMediaSink.h" />
     <ClInclude Include="resource.h" />

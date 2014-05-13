@@ -21,25 +21,7 @@
 #include "MediaPacketSample.h"
 #include "RtspSourceFilter.h"
 
-#ifdef _DEBUG
-// UsageEnvironment that outputs to DebugString instead of stderr
-class MyUsageEnvironment : public BasicUsageEnvironment
-{
-public:
-    static MyUsageEnvironment* createNew(TaskScheduler& taskScheduler);
-    virtual UsageEnvironment& operator<<(char const* str);
-    virtual UsageEnvironment& operator<<(int i);
-    virtual UsageEnvironment& operator<<(unsigned u);
-    virtual UsageEnvironment& operator<<(double d);
-    virtual UsageEnvironment& operator<<(void* p);
-
-protected:
-    static char buffer[2048];
-    MyUsageEnvironment(TaskScheduler& taskScheduler);
-};
-#else
-typedef BasicUsageEnvironment MyUsageEnvironment;
-#endif
+#include "Debug.h"
 
 class RtspSourceFilter : public CSource,
                          public IFileSourceFilter,
