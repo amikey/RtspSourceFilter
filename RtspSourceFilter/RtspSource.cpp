@@ -351,93 +351,76 @@ void RtspSourceFilter::OpenUrl(const std::string& url)
     _rtsp->sendDescribeCommand(HandleDescribeResponse, &_authenticator);
 }
 
-void RtspSourceFilter::Play()
+void RtspSourceFilter::HandleDescribeResponse(RTSPClient* client, int resultCode, char* resultString)
 {
-    MediaSession& mediaSession = *_rtsp->mediaSession;
-
-    const float scale = 1.0f; // No trick play
-
-    _sessionDuration = mediaSession.playEndTime() - _initialSeekTime;
-    _sessionDuration = std::max(0.0, _sessionDuration);
-
-    // For duration equal to 0 we got live stream with no end time (-1)
-    _endTime = _sessionDuration > 0.0 ? _initialSeekTime + _sessionDuration : - 1.0;
-
-    const char* absStartTime = mediaSession.absStartTime();
-    if (absStartTime != nullptr)
-    {
-        // Either we or the server have specified that seeking should be done by 'absolute' time:
-        _rtsp->sendPlayCommand(mediaSession, HandlePlayResponse, absStartTime, mediaSession.absEndTime(),
-            scale, &_authenticator);
-    }
-    else
-    {
-        // Normal case: Seek by relative time (NPT):
-        _rtsp->sendPlayCommand(mediaSession, HandlePlayResponse, _initialSeekTime, _endTime,
-            scale, &_authenticator);
-    }
+    RtspClient* myClient = static_cast<RtspClient*>(client);
+    myClient->filter->HandleDescribeResponse(resultCode, resultString);
 }
 
-void RtspSourceFilter::Shutdown()
+void RtspSourceFilter::HandleDescribeResponse(int resultCode, char* resultString)
 {
-    // Unschedule all dangling delayed tasks
+    // Don't need this anymore - we got a response in time
     if (_firstCallTimeoutTask != nullptr)
         _scheduler->unscheduleDelayedTask(_firstCallTimeoutTask);
-    if (_interPacketGapCheckTimerTask != nullptr)
-        _scheduler->unscheduleDelayedTask(_interPacketGapCheckTimerTask);
-    if (_reconnectionTimerTask != nullptr)
-        _scheduler->unscheduleDelayedTask(_reconnectionTimerTask);
-    if (_livenessCommandTask != nullptr)
-        _scheduler->unscheduleDelayedTask(_livenessCommandTask);
-    if (_sessionTimerTask != nullptr)
-        _scheduler->unscheduleDelayedTask(_sessionTimerTask);
 
-    CloseSession();
-    CloseClient();
-
-    _state = State::Initial;
-    _currentRequest.SetValue(error::Success);
-
-    // Notify pins we are tearing down
-    _videoMediaQueue.push(MediaPacketSample());
-    _audioMediaQueue.push(MediaPacketSample());
-}
-
-void RtspSourceFilter::Reconnect()
-{
-    // Called from worker thread as a delayed task
-    DebugLog("Reconnect now!\n");
-    _reconnectionTimerTask = nullptr;
-    AsyncReconnect();
-}
-
-void RtspSourceFilter::CloseSession()
-{
-    if (!_rtsp) return; // sane check
-    MediaSession* mediaSession = _rtsp->mediaSession;
-    if (mediaSession != nullptr)
+    if (resultCode != 0)
     {
-        // Don't bother waiting or response
-        _rtsp->sendTeardownCommand(*mediaSession, nullptr, &_authenticator);
-        // Close media sinks
-        MediaSubsessionIterator iter(*mediaSession);
-        MediaSubsession* subsession;
-        while ((subsession = iter.next()) != nullptr)
-        {
-            Medium::close(subsession->sink);
-            subsession->sink = nullptr;
-        }
-        // Close media session itself
-        Medium::close(mediaSession);
-        _rtsp->mediaSession = nullptr;
-    }
-}
+        delete[] resultString;
 
-void RtspSourceFilter::CloseClient()
-{
-    // Shutdown RTSP client
-    Medium::close(_rtsp);
-    _rtsp = nullptr;
+        CloseClient(); // No session to close yet
+        if (ScheduleNextReconnect()) return;
+
+        // Couldn't connect to the server
+        if (resultCode == -WSAENOTCONN)
+        {
+            _state = State::Initial;
+            _currentRequest.SetValue(error::ServerNotReachable);
+        }
+        else
+        {
+            _state = State::Initial;
+            _currentRequest.SetValue(error::DescribeFailed);
+        }
+
+        return;
+    }
+
+    MediaSession* mediaSession = MediaSession::createNew(*_env, resultString);
+    delete[] resultString;
+    if (!mediaSession) // SDP is invalid or out of memory
+    {
+        CloseClient(); // No session to close to yet
+        if (ScheduleNextReconnect()) return;
+
+        _currentRequest.SetValue(error::SdpInvalid);
+        _state = State::Initial;
+
+        return;
+    }
+    // Sane check
+    else if (!mediaSession->hasSubsessions())
+    {
+        // Close media session (don't wait for a response)
+        _rtsp->sendTeardownCommand(*mediaSession, nullptr, &_authenticator);
+        Medium::close(mediaSession);
+
+        // Close client
+        CloseClient();
+        if (ScheduleNextReconnect()) return;
+
+        _currentRequest.SetValue(error::NoSubsessions);
+        _state = State::Initial;
+
+        return;
+    }
+
+    // Start setuping media session
+    MediaSubsessionIterator* iter = new MediaSubsessionIterator(*mediaSession);
+    _rtsp->mediaSession = mediaSession;
+    _rtsp->iter = iter;
+    _numSubsessions = 0;
+
+    SetupSubsession();
 }
 
 void RtspSourceFilter::SetupSubsession()
@@ -515,115 +498,6 @@ void RtspSourceFilter::SetupSubsession()
     }
 }
 
-bool RtspSourceFilter::ScheduleNextReconnect()
-{
-    if (_state == State::Reconnecting)
-    {
-        _scheduler->scheduleDelayedTask(_autoReconnectionMSecs*1000, 
-            &RtspSourceFilter::Reconnect, this);
-        // state is still Reconnecting
-        _currentRequest.SetValue(error::ReconnectFailed);
-        return true;
-    }
-    return false;
-}
-
-void RtspSourceFilter::HandleOptionsResponse(RTSPClient* client, int resultCode, char* resultString)
-{
-    RtspClient* myClient = static_cast<RtspClient*>(client);
-    myClient->filter->HandleOptionsResponse(resultCode, resultString);
-}
-
-void RtspSourceFilter::HandleOptionsResponse(int resultCode, char* resultString)
-{
-    // Used as a liveness command
-    delete[] resultString;
-
-    if (resultCode != 0)
-    {
-        // Error - dont schedule next keep-alive requests
-        _livenessCommandTask = nullptr;     
-    }
-    else
-    {
-        // Schedule next keep-alive request
-        _livenessCommandTask = _scheduler->scheduleDelayedTask(_sessionTimeout/3*1000000,
-            &RtspSourceFilter::SendLivenessCommand, this);
-    }
-}
-
-void RtspSourceFilter::HandleDescribeResponse(RTSPClient* client, int resultCode, char* resultString)
-{
-    RtspClient* myClient = static_cast<RtspClient*>(client);
-    myClient->filter->HandleDescribeResponse(resultCode, resultString);
-}
-
-void RtspSourceFilter::HandleDescribeResponse(int resultCode, char* resultString)
-{
-    // Don't need this anymore - we got a response in time
-    if (_firstCallTimeoutTask != nullptr)
-        _scheduler->unscheduleDelayedTask(_firstCallTimeoutTask);
-
-    if (resultCode != 0)
-    {
-        delete[] resultString;
-
-        CloseClient(); // No session to close yet
-        if (ScheduleNextReconnect()) return;
-
-        // Couldn't connect to the server
-        if (resultCode == -WSAENOTCONN)
-        {
-            _state = State::Initial;
-            _currentRequest.SetValue(error::ServerNotReachable);
-        }
-        else
-        {
-            _state = State::Initial;
-            _currentRequest.SetValue(error::DescribeFailed);
-        }
-
-        return;
-    }
-
-    MediaSession* mediaSession = MediaSession::createNew(*_env, resultString);
-    delete[] resultString;
-    if (!mediaSession) // SDP is invalid or out of memory
-    {
-        CloseClient(); // No session to close to yet
-        if (ScheduleNextReconnect()) return;
-
-        _currentRequest.SetValue(error::SdpInvalid);
-        _state = State::Initial;
-
-        return;
-    }
-    // Sane check
-    else if (!mediaSession->hasSubsessions())
-    {
-        // Close media session (don't wait for a response)
-        _rtsp->sendTeardownCommand(*mediaSession, nullptr, &_authenticator);
-        Medium::close(mediaSession);
-
-        // Close client
-        CloseClient();
-        if (ScheduleNextReconnect()) return;
-
-        _currentRequest.SetValue(error::NoSubsessions);
-        _state = State::Initial;
-
-        return;
-    }
-
-    // Start setuping media session
-    MediaSubsessionIterator* iter = new MediaSubsessionIterator(*mediaSession);
-    _rtsp->mediaSession = mediaSession;
-    _rtsp->iter = iter;
-    _numSubsessions = 0;
-
-    SetupSubsession();
-}
-
 void RtspSourceFilter::HandleSetupResponse(RTSPClient* client, int resultCode, char* resultString)
 {
     RtspClient* myClient = static_cast<RtspClient*>(client);
@@ -683,6 +557,33 @@ void RtspSourceFilter::HandleSetupResponse(int resultCode, char* resultString)
     SetupSubsession();
 }
 
+void RtspSourceFilter::Play()
+{
+    MediaSession& mediaSession = *_rtsp->mediaSession;
+
+    const float scale = 1.0f; // No trick play
+
+    _sessionDuration = mediaSession.playEndTime() - _initialSeekTime;
+    _sessionDuration = std::max(0.0, _sessionDuration);
+
+    // For duration equal to 0 we got live stream with no end time (-1)
+    _endTime = _sessionDuration > 0.0 ? _initialSeekTime + _sessionDuration : - 1.0;
+
+    const char* absStartTime = mediaSession.absStartTime();
+    if (absStartTime != nullptr)
+    {
+        // Either we or the server have specified that seeking should be done by 'absolute' time:
+        _rtsp->sendPlayCommand(mediaSession, HandlePlayResponse, absStartTime, mediaSession.absEndTime(),
+            scale, &_authenticator);
+    }
+    else
+    {
+        // Normal case: Seek by relative time (NPT):
+        _rtsp->sendPlayCommand(mediaSession, HandlePlayResponse, _initialSeekTime, _endTime,
+            scale, &_authenticator);
+    }
+}
+
 void RtspSourceFilter::HandlePlayResponse(RTSPClient* client, int resultCode, char* resultString)
 {
     RtspClient* myClient = static_cast<RtspClient*>(client);
@@ -734,6 +635,35 @@ void RtspSourceFilter::HandlePlayResponse(int resultCode, char* resultString)
     delete[] resultString;
 }
 
+void RtspSourceFilter::CloseSession()
+{
+    if (!_rtsp) return; // sane check
+    MediaSession* mediaSession = _rtsp->mediaSession;
+    if (mediaSession != nullptr)
+    {
+        // Don't bother waiting or response
+        _rtsp->sendTeardownCommand(*mediaSession, nullptr, &_authenticator);
+        // Close media sinks
+        MediaSubsessionIterator iter(*mediaSession);
+        MediaSubsession* subsession;
+        while ((subsession = iter.next()) != nullptr)
+        {
+            Medium::close(subsession->sink);
+            subsession->sink = nullptr;
+        }
+        // Close media session itself
+        Medium::close(mediaSession);
+        _rtsp->mediaSession = nullptr;
+    }
+}
+
+void RtspSourceFilter::CloseClient()
+{
+    // Shutdown RTSP client
+    Medium::close(_rtsp);
+    _rtsp = nullptr;
+}
+
 void RtspSourceFilter::HandleSubsessionFinished(void* clientData)
 {
     MediaSubsession* subsession = static_cast<MediaSubsession*>(clientData);
@@ -766,6 +696,49 @@ void RtspSourceFilter::HandleSubsessionByeHandler(void* clientData)
     HandleSubsessionFinished(clientData);
 }
 
+void RtspSourceFilter::Shutdown()
+{
+    // Unschedule all dangling delayed tasks
+    if (_firstCallTimeoutTask != nullptr)
+        _scheduler->unscheduleDelayedTask(_firstCallTimeoutTask);
+    if (_interPacketGapCheckTimerTask != nullptr)
+        _scheduler->unscheduleDelayedTask(_interPacketGapCheckTimerTask);
+    if (_reconnectionTimerTask != nullptr)
+        _scheduler->unscheduleDelayedTask(_reconnectionTimerTask);
+    if (_livenessCommandTask != nullptr)
+        _scheduler->unscheduleDelayedTask(_livenessCommandTask);
+    if (_sessionTimerTask != nullptr)
+        _scheduler->unscheduleDelayedTask(_sessionTimerTask);
+
+    CloseSession();
+    CloseClient();
+
+    _state = State::Initial;
+    _currentRequest.SetValue(error::Success);
+
+    // Notify pins we are tearing down
+    _videoMediaQueue.push(MediaPacketSample());
+    _audioMediaQueue.push(MediaPacketSample());
+}
+
+bool RtspSourceFilter::ScheduleNextReconnect()
+{
+    if (_state == State::Reconnecting)
+    {
+        _scheduler->scheduleDelayedTask(_autoReconnectionMSecs*1000, 
+            &RtspSourceFilter::Reconnect, this);
+        // state is still Reconnecting
+        _currentRequest.SetValue(error::ReconnectFailed);
+        return true;
+    }
+    return false;
+}
+
+/*
+ * Task:_firstCallTimeoutTask
+ * Allows for customized timeout on first call to the target RTSP server
+ * Viable only in SettingUp an Reconnecing state.
+ */
 void RtspSourceFilter::DescribeRequestTimeout(void* clientData)
 {
     RtspSourceFilter* self = static_cast<RtspSourceFilter*>(clientData);
@@ -774,7 +747,12 @@ void RtspSourceFilter::DescribeRequestTimeout(void* clientData)
 
 void RtspSourceFilter::DescribeRequestTimeout()
 {
+    _ASSERT(_state == State::SettingUp || 
+            _state == State::Reconnecting);
     _firstCallTimeoutTask = nullptr;
+
+    if (_reconnectionTimerTask != nullptr)
+        _scheduler->unscheduleDelayedTask(_reconnectionTimerTask);
 
     CloseClient(); // No session to close yet
     if (ScheduleNextReconnect()) return;
@@ -783,6 +761,11 @@ void RtspSourceFilter::DescribeRequestTimeout()
     _currentRequest.SetValue(error::ServerNotReachable);
 }
 
+/*
+ * Task:_interPacketGapCheckTimerTask:
+ * Periodically calculates how many packets arrived allowing to detect connection lost.
+ * Viable only in Playing state.
+ */
 void RtspSourceFilter::CheckInterPacketGaps(void* clientData)
 {
     RtspSourceFilter* self = static_cast<RtspSourceFilter*>(clientData);
@@ -791,9 +774,12 @@ void RtspSourceFilter::CheckInterPacketGaps(void* clientData)
 
 void RtspSourceFilter::CheckInterPacketGaps()
 {
+    _ASSERT(_state == State::Playing);
+    _interPacketGapCheckTimerTask = nullptr;
+
     // Aliases
     UsageEnvironment& env = *_env;
-    MediaSession& mediaSession = *_rtsp->mediaSession;
+    MediaSession& mediaSession = *_rtsp->mediaSession;    
 
     // Check each subsession, counting up how many packets have been received
     MediaSubsessionIterator iter(mediaSession);
@@ -811,25 +797,25 @@ void RtspSourceFilter::CheckInterPacketGaps()
     if (newTotNumPacketsReceived == _totNumPacketsReceived)
     {
         DebugLog("No packets has been received since last time!\n");
-        _interPacketGapCheckTimerTask = nullptr;
-        _scheduler->unscheduleDelayedTask(_livenessCommandTask);
 
-        /// TODO: sessionTimer task unschedule
+        if (_livenessCommandTask != nullptr)
+            _scheduler->unscheduleDelayedTask(_livenessCommandTask);
+        if (_sessionTimerTask != nullptr)
+            _scheduler->unscheduleDelayedTask(_sessionTimerTask);
 
         // If auto reconnect is off - notify pins to stop waiting for packets that most probably won't come
         if (_autoReconnectionMSecs == 0)
         {
             _videoMediaQueue.push(MediaPacketSample());
             _audioMediaQueue.push(MediaPacketSample());
-
-            /// TODO: Should we close session and client here or require the user
-            ///       to call stop on graph when it's notified of EC_COMPLETE event
         }
         // Schedule reconnection task
         else
         {
+            // It's VoD - need to recalculate initial time seek for reconnect PLAY command
             if (_sessionDuration > 0)
             {
+                // Retrieve current play time from output pins
                 REFERENCE_TIME currentPlayTime = 0;
                 if (_videoPin)
                 {
@@ -846,9 +832,10 @@ void RtspSourceFilter::CheckInterPacketGaps()
                 _initialSeekTime += static_cast<double>(currentPlayTime) / UNITS;
             }
 
-            // Notify pin to desynchronize - for live source it shouldn't be necessary but it won't hurt trying
+            // Notify pin to desynchronize
             if (_videoPin) _videoPin->ResetTimeBaselines();
             if (_audioPin) _audioPin->ResetTimeBaselines();
+
             // Finally schedule reconnect task
             _reconnectionTimerTask = _scheduler->scheduleDelayedTask(_autoReconnectionMSecs*1000,
                 &RtspSourceFilter::Reconnect, this);
@@ -863,24 +850,79 @@ void RtspSourceFilter::CheckInterPacketGaps()
     }
 }
 
+/*
+ * Task:_livenessCommandTask:
+ * Periodically requests OPTION command to the server to keep alive the session
+ * Viable only in Playing state.
+ */
 void RtspSourceFilter::SendLivenessCommand(void* clientData)
 {
     RtspSourceFilter* self = static_cast<RtspSourceFilter*>(clientData);
+    _ASSERT(self);
+    _ASSERT(self->_state == State::Playing);
+
     self->_rtsp->sendOptionsCommand(HandleOptionsResponse, &self->_authenticator);
 }
 
-void RtspSourceFilter::HandleMediaEnded(void* clientData)
+void RtspSourceFilter::HandleOptionsResponse(RTSPClient* client, int resultCode, char* resultString)
 {
-    RtspSourceFilter* self = static_cast<RtspSourceFilter*>(clientData);
-    self->_sessionTimerTask = nullptr;
-    self->AsyncShutdown();
-    /// TODO: Shutdown instead with fake request?
+    // If something bad happens between OPTIONS request and response, response handler shouldn't be call
+    RtspClient* myClient = static_cast<RtspClient*>(client);
+    myClient->filter->HandleOptionsResponse(resultCode, resultString);
 }
 
+void RtspSourceFilter::HandleOptionsResponse(int resultCode, char* resultString)
+{
+    _ASSERT(_state == State::Playing);
+
+    // Used as a liveness command
+    delete[] resultString;
+
+    if (resultCode != 0)
+    {
+        // Error - dont schedule next keep-alive requests
+        _livenessCommandTask = nullptr;     
+    }
+    else
+    {
+        // Schedule next keep-alive request
+        _livenessCommandTask = _scheduler->scheduleDelayedTask(_sessionTimeout/3*1000000,
+            &RtspSourceFilter::SendLivenessCommand, this);
+    }
+}
+
+/*
+ * Task:_reconnectionTimerTask
+ * Tries to reopen the connection and start to play from the moment connection was lost
+ * Viable in Playing and Reconnecting (reattempt) state
+ */
 void RtspSourceFilter::Reconnect(void* clientData)
 {
     RtspSourceFilter* self = static_cast<RtspSourceFilter*>(clientData);
     self->Reconnect();
+}
+
+void RtspSourceFilter::Reconnect()
+{
+    _ASSERT(_state == State::Playing || _state == State::Reconnecting);
+    _reconnectionTimerTask = nullptr;
+
+    // Called from worker thread as a delayed task
+    DebugLog("Reconnect now!\n");
+    AsyncReconnect();
+}
+
+/*
+ * Task:_sessionTimerTask 
+ * Perform shutdown when media come to end (for VOD)
+ * Viable only in Playing state.
+ */
+void RtspSourceFilter::HandleMediaEnded(void* clientData)
+{
+    RtspSourceFilter* self = static_cast<RtspSourceFilter*>(clientData);
+    _ASSERT(self->_state == State::Playing);
+    self->_sessionTimerTask = nullptr;
+    self->AsyncShutdown();
 }
 
 void RtspSourceFilter::WorkerThread()
