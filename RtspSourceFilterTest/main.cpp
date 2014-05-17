@@ -11,6 +11,11 @@
 #include <iostream>
 #include <thread>
 
+#if defined(_M_X64) || defined(__amd64__)
+#  include <wmcodecdsp.h>
+#  pragma comment(lib, "wmcodecdspuuid.lib")
+#endif
+
 // {AF645432-7263-49C1-9FA3-E6DA0B346EAB}
 DEFINE_GUID(CLSID_RtspSourceFilter, 
 0xaf645432, 0x7263, 0x49c1, 0x9f, 0xa3, 0xe6, 0xda, 0xb, 0x34, 0x6e, 0xab);
@@ -44,9 +49,9 @@ int main()
         CComQIPtr<IRtspSourceConfig> pRtspConfig = pRtspSource;
         if (pRtspConfig)
         {
-            // pRtspConfig->SetStreamingOverTcp(TRUE)
-            // pRtspConfig->SetTunnelingOverHttpPort(80);
-            pRtspConfig->SetInitialSeekTime(50.0);
+            //pRtspConfig->SetStreamingOverTcp(TRUE);
+            //pRtspConfig->SetTunnelingOverHttpPort(80);
+            //pRtspConfig->SetInitialSeekTime(0.0);
             pRtspConfig->SetLatency(500);
             pRtspConfig->SetAutoReconnectionPeriod(5000);
         }
@@ -63,7 +68,11 @@ int main()
         }
 
         CComPtr<IBaseFilter> pDecoder;
+#if defined(_M_X64) || defined(__amd64__)
+        BREAK_FAIL(pDecoder.CoCreateInstance(CLSID_CMPEG2VidDecoderDS));
+#else
         BREAK_FAIL(pDecoder.CoCreateInstance(CLSID_LAVVideo));
+#endif
 
         CComPtr<IBaseFilter> pVmr;
         BREAK_FAIL(pVmr.CoCreateInstance(CLSID_VideoMixingRenderer9));
@@ -94,6 +103,7 @@ int main()
         BREAK_FAIL(pMediaControl->Run());
 
         MessageBoxA(NULL, "Blocking", "Blocking", MB_OK);
+
         pMediaControl->Stop();
     } while (0);
 

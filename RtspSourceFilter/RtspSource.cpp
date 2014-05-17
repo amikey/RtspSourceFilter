@@ -147,7 +147,7 @@ HRESULT RtspSourceFilter::GetCurFile(LPOLESTR* outFileName, AM_MEDIA_TYPE* outMe
             delete[] pFileName;
             return S_OK;
         }
-        DWORD n = sizeof(WCHAR) * (1 + wcslen(pFileName));
+        size_t n = sizeof(WCHAR) * (1 + wcslen(pFileName));
         *outFileName = (LPOLESTR)CoTaskMemAlloc(n);
         if (*outFileName != nullptr)
             CopyMemory(*outFileName, pFileName, n);
