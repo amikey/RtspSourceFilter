@@ -6,11 +6,7 @@
 #include "Debug.h"
 
 #include <new>
-#include <Windows.h>
 #include <DShow.h>
-
-#undef min
-#undef max
 
 /*
  * In order to add support for new media format (f.e. HEVC) one needs to:
@@ -21,9 +17,9 @@
  */
 
 #ifdef DEBUG 
-#define RTSP_CLIENT_VERBOSITY_LEVEL 1
+#  define RTSP_CLIENT_VERBOSITY_LEVEL 1
 #else
-#define RTSP_CLIENT_VERBOSITY_LEVEL 0
+#  define RTSP_CLIENT_VERBOSITY_LEVEL 0
 #endif
 
 namespace
@@ -65,6 +61,7 @@ protected:
 
     virtual ~RtspClient()
     {
+        // If true, we'd have a memleak
         _ASSERT(!mediaSession);
         _ASSERT(!subsession);
         _ASSERT(!iter);
@@ -598,7 +595,7 @@ void RtspSourceFilter::HandlePlayResponse(int resultCode, char* resultString)
         _sessionTimeout = _rtsp->sessionTimeoutParameter() != 0
             ? _rtsp->sessionTimeoutParameter() : 60;
 
-        // Create timerTask for disconnection recognition and auto reconnect mechanism
+        // Create timerTask for disconnection recognition
         _interPacketGapCheckTimerTask = _scheduler->scheduleDelayedTask(interPacketGapMaxTime*1000, 
             &RtspSourceFilter::CheckInterPacketGaps, this);
         // Create timerTask for session keep-alive (use OPTIONS request to sustain session)
@@ -650,7 +647,7 @@ void RtspSourceFilter::CloseSession()
     MediaSession* mediaSession = _rtsp->mediaSession;
     if (mediaSession != nullptr)
     {
-        // Don't bother waiting or response
+        // Don't bother waiting for response
         _rtsp->sendTeardownCommand(*mediaSession, nullptr, &_authenticator);
         // Close media sinks
         MediaSubsessionIterator iter(*mediaSession);
@@ -1135,7 +1132,9 @@ namespace
             }
             else if (!strcmp(mediaSubsession.codecName(), "AC3"))
             {
-                return true;
+                return false;
+                // TODO: Not completed
+                //return true;
             }
         }
 

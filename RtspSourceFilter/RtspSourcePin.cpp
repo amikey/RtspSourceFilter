@@ -35,6 +35,7 @@ RtspSourcePin::RtspSourcePin(HRESULT* phr, CSource* pFilter,
     , _codecFourCC(0), _currentPlayTime(0), _rtpPresentationTimeBaseline(0)
     , _streamTimeBaseline(0), _firstSample(true), _rtcpSynced(false)
 {
+    _ASSERT(dynamic_cast<RtspSourceFilter*>(m_pFilter));
     HRESULT hr = InitializeMediaType();
     if (phr) *phr = hr;
 }
