@@ -24,6 +24,7 @@ namespace
     HRESULT GetMediaTypeH264(CMediaType& mediaType, MediaSubsession& mediaSubsession);
     HRESULT GetMediaTypeAVC1(CMediaType& mediaType, MediaSubsession& mediaSubsession);
     HRESULT GetMediaTypeAAC(CMediaType& mediaType, MediaSubsession& mediaSubsession);
+    HRESULT GetMediaTypeAC3(CMediaType& mediaType, MediaSubsession& mediaSubsession);
 
     bool IsIdrFrame(const MediaPacketSample& mediaPacket);
 }
@@ -240,6 +241,11 @@ HRESULT RtspSourcePin::InitializeMediaType()
             hr = GetMediaTypeAAC(_mediaType, *_mediaSubsession);
             _codecFourCC = DWORD('mp4a');
         }
+        else if (!strcmp(_mediaSubsession->codecName(), "AC3"))
+        {
+            hr = GetMediaTypeAC3(_mediaType, *_mediaSubsession);
+            _codecFourCC = DWORD('ac3');
+        }
     }
 
     return hr;
@@ -421,7 +427,30 @@ namespace
         mediaType.SetType(&MEDIATYPE_Audio);
         mediaType.SetSubtype(&MEDIASUBTYPE_RAW_AAC1);
         mediaType.SetFormatType(&FORMAT_WaveFormatEx);
-        //_mediaType.SetSampleSize(256000); // Set to 1 on InitMedia
+        //mediaType.SetSampleSize(256000); // Set to 1 on InitMedia
+        mediaType.SetTemporalCompression(FALSE);
+
+        return S_OK;
+    }
+
+    /// TODO: Not completed!
+    HRESULT GetMediaTypeAC3(CMediaType& mediaType, MediaSubsession& mediaSubsession)
+    {
+        WAVEFORMATEX* pWave = (WAVEFORMATEX*)mediaType.AllocFormatBuffer(sizeof(WAVEFORMATEX));
+        if (!pWave) return E_OUTOFMEMORY;
+        ZeroMemory(pWave, sizeof(WAVEFORMATEX));
+
+        // The RTP timestamp clock rate is equal to the audio sampling rate
+        pWave->nSamplesPerSec = mediaSubsession.rtpTimestampFrequency();
+        pWave->nChannels = mediaSubsession.numChannels();
+        pWave->nAvgBytesPerSec = mediaSubsession.bandwidth()*1024/8; //kbps to B/s
+        pWave->nBlockAlign = 1;
+        //pWave->wBitsPerSample = 16; // Can be 0 I guess
+
+        mediaType.SetType(&MEDIATYPE_Audio);
+        mediaType.SetSubtype(&MEDIASUBTYPE_DOLBY_AC3);
+        mediaType.SetFormatType(&FORMAT_WaveFormatEx);
+        //mediaType.SetSampleSize(256000);
         mediaType.SetTemporalCompression(FALSE);
 
         return S_OK;

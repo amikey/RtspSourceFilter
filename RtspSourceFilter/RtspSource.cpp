@@ -1133,6 +1133,10 @@ namespace
             {        
                 return true;
             }
+            else if (!strcmp(mediaSubsession.codecName(), "AC3"))
+            {
+                return true;
+            }
         }
 
         return false;
