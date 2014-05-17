@@ -701,6 +701,7 @@ void RtspSourceFilter::HandleSubsessionFinished(void* clientData)
 
 void RtspSourceFilter::HandleSubsessionByeHandler(void* clientData)
 {
+    DebugLog("BYE!\n");
     // We were given a RTCP BYE packet - server close the connection (for example: session timeout)
     HandleSubsessionFinished(clientData);
 }
@@ -873,6 +874,7 @@ void RtspSourceFilter::SendLivenessCommand(void* clientData)
     _ASSERT(self);
     _ASSERT(self->_state == State::Playing);
 
+    self->_livenessCommandTask = nullptr;
     self->_rtsp->sendOptionsCommand(HandleOptionsResponse, &self->_authenticator);
 }
 
@@ -890,14 +892,9 @@ void RtspSourceFilter::HandleOptionsResponse(int resultCode, char* resultString)
     // Used as a liveness command
     delete[] resultString;
 
-    if (resultCode != 0)
+    if (resultCode == 0)
     {
-        // Error - dont schedule next keep-alive requests
-        _livenessCommandTask = nullptr;     
-    }
-    else
-    {
-        // Schedule next keep-alive request
+        // Schedule next keep-alive request if there wasn't any error along the way
         _livenessCommandTask = _scheduler->scheduleDelayedTask(_sessionTimeout/3*1000000,
             &RtspSourceFilter::SendLivenessCommand, this);
     }
@@ -931,6 +928,7 @@ void RtspSourceFilter::Reconnect()
  */
 void RtspSourceFilter::HandleMediaEnded(void* clientData)
 {
+    DebugLog("Media ended!\n");
     RtspSourceFilter* self = static_cast<RtspSourceFilter*>(clientData);
     _ASSERT(self->_state == State::Playing);
     self->_sessionTimerTask = nullptr;
