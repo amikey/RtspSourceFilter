@@ -455,11 +455,9 @@ void RtspSourceFilter::SetupSubsession()
             else if (!strcmp(subsession->mediumName(), "audio"))
                 recvBuffer = recvBufferAudio;
 
+            // Increase receive buffer for rather big packets (like H.264 IDR)
             if (recvBuffer > 0 && rtpSource->RTPgs())
-            {
-                int socketFd = rtpSource->RTPgs()->socketNum();
-                ::increaseReceiveBufferTo(*_env, socketFd, recvBuffer);
-            }
+                ::increaseReceiveBufferTo(*_env, rtpSource->RTPgs()->socketNum(), recvBuffer);
         }
 
         _rtsp->sendSetupCommand(*subsession, HandleSetupResponse, False,
@@ -467,6 +465,7 @@ void RtspSourceFilter::SetupSubsession()
         return;
     }
 
+    // We iterated over all available subsessions
     delete _rtsp->iter;
     _rtsp->iter = nullptr;
 
@@ -492,7 +491,6 @@ void RtspSourceFilter::SetupSubsession()
     else
     {
         // Autostart playing if we're reconnecting
-        // Also wrong - untill play command is success we cant set it to Playing
         _state = State::Playing;
         Play();
     }
@@ -620,16 +618,27 @@ void RtspSourceFilter::HandlePlayResponse(int resultCode, char* resultString)
     }
     else
     {
-        // TODO: Unshedule dangling delayed tasks
-
+        UnscheduleAllDelayedTasks();
         CloseSession();
         CloseClient();
 
-        _state = State::Initial;
-        _currentRequest.SetValue(error::PlayFailed);
+        if (_autoReconnectionMSecs > 0)
+        {
+            _scheduler->scheduleDelayedTask(_autoReconnectionMSecs*1000, 
+                &RtspSourceFilter::Reconnect, this);
+            _state = State::Reconnecting;
+            _currentRequest.SetValue(error::PlayFailed);
+        }
+        else
+        {
 
-        // TODO: Notify pins PLAY command failed.
-        // They are probably already waiting for incoming packets
+            _state = State::Initial;
+            _currentRequest.SetValue(error::PlayFailed);
+
+            // Notify output pins PLAY command failed
+            _videoMediaQueue.push(MediaPacketSample());
+            _audioMediaQueue.push(MediaPacketSample());
+        }
     }
 
     delete[] resultString;
@@ -680,14 +689,14 @@ void RtspSourceFilter::HandleSubsessionFinished(void* clientData)
             return;
     }
     // No more subsessions active - close the session
-    // TODO: Unschedule dangling tasks
     RtspSourceFilter* self = rtsp->filter;
+    self->UnscheduleAllDelayedTasks();
     self->CloseSession();
     self->CloseClient();
     self->_state = State::Initial;
+    self->_videoMediaQueue.push(MediaPacketSample());
+    self->_audioMediaQueue.push(MediaPacketSample());
     // No request to reply to
-
-    // TODO: Notify pins play failed
 }
 
 void RtspSourceFilter::HandleSubsessionByeHandler(void* clientData)
@@ -696,9 +705,8 @@ void RtspSourceFilter::HandleSubsessionByeHandler(void* clientData)
     HandleSubsessionFinished(clientData);
 }
 
-void RtspSourceFilter::Shutdown()
+void RtspSourceFilter::UnscheduleAllDelayedTasks()
 {
-    // Unschedule all dangling delayed tasks
     if (_firstCallTimeoutTask != nullptr)
         _scheduler->unscheduleDelayedTask(_firstCallTimeoutTask);
     if (_interPacketGapCheckTimerTask != nullptr)
@@ -709,7 +717,11 @@ void RtspSourceFilter::Shutdown()
         _scheduler->unscheduleDelayedTask(_livenessCommandTask);
     if (_sessionTimerTask != nullptr)
         _scheduler->unscheduleDelayedTask(_sessionTimerTask);
+}
 
+void RtspSourceFilter::Shutdown()
+{
+    UnscheduleAllDelayedTasks();
     CloseSession();
     CloseClient();
 
@@ -987,6 +999,9 @@ void RtspSourceFilter::WorkerThread()
                 break;
 
             case RtspAsyncRequest::Stop:
+                // Needed if filter is re-started and fails to start running for some reason
+                // and also output pins threads are already started and waiting for packets.
+                // This is because Pause() is called before Run() which can fail if filter is restarted
                 _videoMediaQueue.push(MediaPacketSample());
                 _audioMediaQueue.push(MediaPacketSample());
                 req.SetValue(error::Success);

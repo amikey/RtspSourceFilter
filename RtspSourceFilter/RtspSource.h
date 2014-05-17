@@ -83,6 +83,7 @@ private:
     void SetupSubsession();
     bool ScheduleNextReconnect();
     void DescribeRequestTimeout();
+    void UnscheduleAllDelayedTasks();
 
     // Thin proxies for real handlers
     static void HandleOptionsResponse(RTSPClient* client, int resultCode, char* resultString);
