@@ -9,8 +9,6 @@
 #include <dvdmedia.h>
 #include <wmcodecdsp.h>
 #include <MMReg.h>
-// Audio GUIDs
-#pragma comment(lib, "wmcodecdspuuid.lib")
 
 // Uncomment this to use H.264 without starting codes (AVC1 FOURCC)
 //#define H264_USE_AVC1

@@ -1,16 +1,24 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.30110.0
+VisualStudioVersion = 12.0.30501.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "live555", "live555\live555.vcxproj", "{3BE86A9B-FF7A-4649-9FED-0F553B618A77}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RtspSourceFilter", "RtspSourceFilter\RtspSourceFilter.vcxproj", "{6FB45804-EE28-498E-A879-B8EB3D9DDF86}"
 	ProjectSection(ProjectDependencies) = postProject
 		{3BE86A9B-FF7A-4649-9FED-0F553B618A77} = {3BE86A9B-FF7A-4649-9FED-0F553B618A77}
+		{E8A3F6FA-AE1C-4C8E-A0B6-9C8480324EAA} = {E8A3F6FA-AE1C-4C8E-A0B6-9C8480324EAA}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RtspSourceFilterTest", "RtspSourceFilterTest\RtspSourceFilterTest.vcxproj", "{ED349FD9-3283-4959-8CBB-F644654B081C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6FB45804-EE28-498E-A879-B8EB3D9DDF86} = {6FB45804-EE28-498E-A879-B8EB3D9DDF86}
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libs", "Libs", "{92921DC3-F26C-4225-ACBC-D4CC5523B8EB}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BaseClasses", "baseclasses\BaseClasses.vcxproj", "{E8A3F6FA-AE1C-4C8E-A0B6-9C8480324EAA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,8 +38,16 @@ Global
 		{ED349FD9-3283-4959-8CBB-F644654B081C}.Debug|Win32.Build.0 = Debug|Win32
 		{ED349FD9-3283-4959-8CBB-F644654B081C}.Release|Win32.ActiveCfg = Release|Win32
 		{ED349FD9-3283-4959-8CBB-F644654B081C}.Release|Win32.Build.0 = Release|Win32
+		{E8A3F6FA-AE1C-4C8E-A0B6-9C8480324EAA}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E8A3F6FA-AE1C-4C8E-A0B6-9C8480324EAA}.Debug|Win32.Build.0 = Debug|Win32
+		{E8A3F6FA-AE1C-4C8E-A0B6-9C8480324EAA}.Release|Win32.ActiveCfg = Release|Win32
+		{E8A3F6FA-AE1C-4C8E-A0B6-9C8480324EAA}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{3BE86A9B-FF7A-4649-9FED-0F553B618A77} = {92921DC3-F26C-4225-ACBC-D4CC5523B8EB}
+		{E8A3F6FA-AE1C-4C8E-A0B6-9C8480324EAA} = {92921DC3-F26C-4225-ACBC-D4CC5523B8EB}
 	EndGlobalSection
 EndGlobal
