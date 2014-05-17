@@ -54,7 +54,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)live555/liveMedia/include;$(SolutionDir)live555/BasicUsageEnvironment/include;$(SolutionDir)live555/UsageEnvironment/include;$(SolutionDir)live555/groupsock/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)live555/liveMedia/include;$(SolutionDir)live555/BasicUsageEnvironment/include;$(SolutionDir)live555/UsageEnvironment/include;$(SolutionDir)live555/groupsock/include;$(SolutionDir)baseclasses;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -74,7 +74,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)live555/liveMedia/include;$(SolutionDir)live555/BasicUsageEnvironment/include;$(SolutionDir)live555/UsageEnvironment/include;$(SolutionDir)live555/groupsock/include;$(SolutionDir)baseclasses/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)live555/liveMedia/include;$(SolutionDir)live555/BasicUsageEnvironment/include;$(SolutionDir)live555/UsageEnvironment/include;$(SolutionDir)live555/groupsock/include;$(SolutionDir)baseclasses;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
