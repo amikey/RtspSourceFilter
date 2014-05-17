@@ -12,6 +12,9 @@
 // Audio GUIDs
 #pragma comment(lib, "wmcodecdspuuid.lib")
 
+// Uncomment this to use H.264 without starting codes (AVC1 FOURCC)
+//#define H264_USE_AVC1
+
 namespace
 {
     const int sequenceHeaderLengthFieldSize = 2;
@@ -41,19 +44,19 @@ RtspSourcePin::~RtspSourcePin() {}
 
 HRESULT RtspSourcePin::OnThreadCreate()
 {
-    DebugLog("%s\n", __FUNCTION__);
+    DebugLog("%S pin: %s\n", m_pName, __FUNCTION__);
     return __super::OnThreadCreate();
 }
 
 HRESULT RtspSourcePin::OnThreadDestroy()
 {
-    DebugLog("%s\n", __FUNCTION__);
+    DebugLog("%S pin: %s\n", m_pName, __FUNCTION__);
     return __super::OnThreadDestroy();
 }
 
 HRESULT RtspSourcePin::OnThreadStartPlay()
 {
-    DebugLog("%s\n", __FUNCTION__);
+    DebugLog("%S pin: %s\n", m_pName, __FUNCTION__);
     ResetTimeBaselines();
     return __super::OnThreadStartPlay();
 }
@@ -105,7 +108,7 @@ HRESULT RtspSourcePin::FillBuffer(IMediaSample* pSample)
     _mediaPacketQueue.pop(mediaSample);
     if (mediaSample.invalid())
     {
-        DebugLog("End of streaming!\n");
+        DebugLog("%S pin: End of streaming!\n", m_pName);
         return S_FALSE;
     }
 
@@ -220,7 +223,6 @@ HRESULT RtspSourcePin::InitializeMediaType()
     {
         if (!strcmp(_mediaSubsession->codecName(), "H264"))
         {
-// #define H264_USE_AVC1
 #if !defined(H264_USE_AVC1)
             // h264 with start codes are "canonical" in network streaming
             hr = GetMediaTypeH264(_mediaType, *_mediaSubsession);

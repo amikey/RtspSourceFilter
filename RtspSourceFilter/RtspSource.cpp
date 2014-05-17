@@ -180,8 +180,8 @@ HRESULT RtspSourceFilter::Load(LPCOLESTR inFileName, const AM_MEDIA_TYPE* inMedi
         // NOTE: We don't fire auto reconnect mechanism now because it would be pretty useless.
         // Until we retrieve session description our filter is pinless
         // so we can't connect it to other filters in a graph
-        *_env << "Error: " << ec.message().c_str() << "\n";
-        _rtspUrl.clear();
+        (*_env) << "Error: " << ec.message().c_str() << "\n";
+        _rtspUrl.clear(); // Allow the user to load different rtsp address
         return E_FAIL;
     }
     else
@@ -218,6 +218,7 @@ HRESULT RtspSourceFilter::Stop()
     DebugLog("%s - state: %s\n", __FUNCTION__, GetFilterStateName(m_State));
 
     // Blocking call
+    // Guarantees that filter is in initial state when done
     AsyncShutdown().get();
 
     return __super::Stop();
@@ -244,11 +245,15 @@ HRESULT RtspSourceFilter::Run(REFERENCE_TIME tStart)
     // Need to reopen the session if we teardowned previous one
     if (_state == State::Initial)
     {
+        // NOTE: We query internal state of a worker thread from different thread thus
+        // this is only valid if we assume it's called as a first Run()
+        // or it is called after Stop(). Both assumptions are respected if 
+        // we call DirectShow from single thread.
         RtspAsyncResult result = AsyncOpenUrl(_rtspUrl);
         RtspResult ec = result.get();
         if (ec)
         {
-            *_env << "Error: " << ec.message().c_str() << "\n";
+            (*_env) << "Error: " << ec.message().c_str() << "\n";
             return E_FAIL;
         }
     }
@@ -268,7 +273,6 @@ void RtspSourceFilter::SetInitialSeekTime(DOUBLE secs)
 
 void RtspSourceFilter::SetStreamingOverTcp(BOOL streamOverTcp)
 {
-    /// TODO: Should we use atomics?
     // Valid call only until first LoadFile call
     _streamOverTcp = streamOverTcp ? true : false;
 }
@@ -296,6 +300,7 @@ void RtspSourceFilter::SetLatency(DWORD dwMSecs)
 void RtspSourceFilter::StopStreaming()
 {
     // Blocking call
+    // Guarantees that filter is in initial state when done
     AsyncShutdown().get();
 }
 
@@ -320,7 +325,7 @@ RtspAsyncResult RtspSourceFilter::AsyncReconnect()
 }
 
 RtspAsyncResult RtspSourceFilter::MakeRequest(RtspAsyncRequest::Type request, 
-                                                  const std::string& requestData)
+                                              const std::string& requestData)
 {
     /// TODO: Check if worker thread is alive
     RtspAsyncRequest rtspRequest(request, requestData);
@@ -375,6 +380,7 @@ void RtspSourceFilter::Play()
 
 void RtspSourceFilter::Shutdown()
 {
+    // Unschedule all dangling delayed tasks
     if (_firstCallTimeoutTask != nullptr)
         _scheduler->unscheduleDelayedTask(_firstCallTimeoutTask);
     if (_interPacketGapCheckTimerTask != nullptr)
@@ -503,6 +509,7 @@ void RtspSourceFilter::SetupSubsession()
     else
     {
         // Autostart playing if we're reconnecting
+        // Also wrong - untill play command is success we cant set it to Playing
         _state = State::Playing;
         Play();
     }
@@ -534,12 +541,15 @@ void RtspSourceFilter::HandleOptionsResponse(int resultCode, char* resultString)
 
     if (resultCode != 0)
     {
+        // Error - dont schedule next keep-alive requests
         _livenessCommandTask = nullptr;     
-        return;
     }
-
-    _livenessCommandTask = _scheduler->scheduleDelayedTask(_sessionTimeout*1000000, 
-        &RtspSourceFilter::SendLivenessCommand, this);
+    else
+    {
+        // Schedule next keep-alive request
+        _livenessCommandTask = _scheduler->scheduleDelayedTask(_sessionTimeout/3*1000000,
+            &RtspSourceFilter::SendLivenessCommand, this);
+    }
 }
 
 void RtspSourceFilter::HandleDescribeResponse(RTSPClient* client, int resultCode, char* resultString)
@@ -550,6 +560,7 @@ void RtspSourceFilter::HandleDescribeResponse(RTSPClient* client, int resultCode
 
 void RtspSourceFilter::HandleDescribeResponse(int resultCode, char* resultString)
 {
+    // Don't need this anymore - we got a response in time
     if (_firstCallTimeoutTask != nullptr)
         _scheduler->unscheduleDelayedTask(_firstCallTimeoutTask);
 
@@ -557,7 +568,7 @@ void RtspSourceFilter::HandleDescribeResponse(int resultCode, char* resultString
     {
         delete[] resultString;
 
-        CloseClient();
+        CloseClient(); // No session to close yet
         if (ScheduleNextReconnect()) return;
 
         // Couldn't connect to the server
@@ -568,8 +579,8 @@ void RtspSourceFilter::HandleDescribeResponse(int resultCode, char* resultString
         }
         else
         {
-            _currentRequest.SetValue(error::DescribeFailed);
             _state = State::Initial;
+            _currentRequest.SetValue(error::DescribeFailed);
         }
 
         return;
@@ -577,9 +588,9 @@ void RtspSourceFilter::HandleDescribeResponse(int resultCode, char* resultString
 
     MediaSession* mediaSession = MediaSession::createNew(*_env, resultString);
     delete[] resultString;
-    if (!mediaSession)
+    if (!mediaSession) // SDP is invalid or out of memory
     {
-        CloseClient();
+        CloseClient(); // No session to close to yet
         if (ScheduleNextReconnect()) return;
 
         _currentRequest.SetValue(error::SdpInvalid);
@@ -613,7 +624,6 @@ void RtspSourceFilter::HandleDescribeResponse(int resultCode, char* resultString
     SetupSubsession();
 }
 
-
 void RtspSourceFilter::HandleSetupResponse(RTSPClient* client, int resultCode, char* resultString)
 {
     RtspClient* myClient = static_cast<RtspClient*>(client);
@@ -646,9 +656,11 @@ void RtspSourceFilter::HandleSetupResponse(int resultCode, char* resultString)
                 _audioPin->ResetMediaSubsession(subsession);
         }
 
+        // What about text medium ?
+
         if (subsession->sink == nullptr)
         {
-            // out of memory or unsupported medium
+            // unsupported medium or out of memory
             SetupSubsession();
             return;
         }
@@ -664,7 +676,7 @@ void RtspSourceFilter::HandleSetupResponse(int resultCode, char* resultString)
     }
     else
     {
-        *_env << "SETUP failed, server response: " << resultString;
+        (*_env) << "SETUP failed, server response: " << resultString;
         delete[] resultString;
     }
     
@@ -682,37 +694,41 @@ void RtspSourceFilter::HandlePlayResponse(int resultCode, char* resultString)
     if (resultCode == 0)
     {
         _currentRequest.SetValue(error::Success);
+        // State is already Playing
         _totNumPacketsReceived = 0;
         _sessionTimeout = _rtsp->sessionTimeoutParameter() != 0
             ? _rtsp->sessionTimeoutParameter() : 60;
 
         // Create timerTask for disconnection recognition and auto reconnect mechanism
         _interPacketGapCheckTimerTask = _scheduler->scheduleDelayedTask(interPacketGapMaxTime*1000, 
-           &RtspSourceFilter::CheckInterPacketGaps, this);
+            &RtspSourceFilter::CheckInterPacketGaps, this);
         // Create timerTask for session keep-alive (use OPTIONS request to sustain session)
-         _livenessCommandTask = _scheduler->scheduleDelayedTask(_sessionTimeout/3*1000000, 
+        _livenessCommandTask = _scheduler->scheduleDelayedTask(_sessionTimeout/3*1000000, 
             &RtspSourceFilter::SendLivenessCommand, this);
 
-         if (_sessionDuration > 0)
-         {
-             double rangeAdjustment = (_rtsp->mediaSession->playEndTime() - 
-                 _rtsp->mediaSession->playStartTime()) - (_endTime - _initialSeekTime);
-             if (_sessionDuration + rangeAdjustment > 0.0)
-                 _sessionDuration += rangeAdjustment;
-             double absScale = 1.0;
-             double secondsToDelay = _sessionDuration / absScale;
-             int64_t uSecsToDelay = (int64_t)(secondsToDelay*1000000.0);
-             _sessionTimerTask = _scheduler->scheduleDelayedTask(uSecsToDelay, 
-                 &RtspSourceFilter::HandleMediaEnded, this);
-         }
+        if (_sessionDuration > 0)
+        {
+            double rangeAdjustment = (_rtsp->mediaSession->playEndTime() - 
+                _rtsp->mediaSession->playStartTime()) - (_endTime - _initialSeekTime);
+            if (_sessionDuration + rangeAdjustment > 0.0)
+                _sessionDuration += rangeAdjustment;
+            int64_t uSecsToDelay = (int64_t)(_sessionDuration*1000000.0);
+            _sessionTimerTask = _scheduler->scheduleDelayedTask(uSecsToDelay, 
+                &RtspSourceFilter::HandleMediaEnded, this);
+        }
     }
     else
     {
+        // TODO: Unshedule dangling delayed tasks
+
         CloseSession();
         CloseClient();
 
         _state = State::Initial;
-        _currentRequest.SetValue(error::PlayFailed);        
+        _currentRequest.SetValue(error::PlayFailed);
+
+        // TODO: Notify pins PLAY command failed.
+        // They are probably already waiting for incoming packets
     }
 
     delete[] resultString;
@@ -734,11 +750,14 @@ void RtspSourceFilter::HandleSubsessionFinished(void* clientData)
             return;
     }
     // No more subsessions active - close the session
+    // TODO: Unschedule dangling tasks
     RtspSourceFilter* self = rtsp->filter;
     self->CloseSession();
     self->CloseClient();
     self->_state = State::Initial;
     // No request to reply to
+
+    // TODO: Notify pins play failed
 }
 
 void RtspSourceFilter::HandleSubsessionByeHandler(void* clientData)
@@ -757,7 +776,7 @@ void RtspSourceFilter::DescribeRequestTimeout()
 {
     _firstCallTimeoutTask = nullptr;
 
-    CloseClient();
+    CloseClient(); // No session to close yet
     if (ScheduleNextReconnect()) return;
 
     _state = State::Initial;
@@ -794,6 +813,8 @@ void RtspSourceFilter::CheckInterPacketGaps()
         DebugLog("No packets has been received since last time!\n");
         _interPacketGapCheckTimerTask = nullptr;
         _scheduler->unscheduleDelayedTask(_livenessCommandTask);
+
+        /// TODO: sessionTimer task unschedule
 
         // If auto reconnect is off - notify pins to stop waiting for packets that most probably won't come
         if (_autoReconnectionMSecs == 0)
@@ -853,6 +874,7 @@ void RtspSourceFilter::HandleMediaEnded(void* clientData)
     RtspSourceFilter* self = static_cast<RtspSourceFilter*>(clientData);
     self->_sessionTimerTask = nullptr;
     self->AsyncShutdown();
+    /// TODO: Shutdown instead with fake request?
 }
 
 void RtspSourceFilter::Reconnect(void* clientData)
