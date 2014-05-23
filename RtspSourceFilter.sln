@@ -20,6 +20,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libs", "Libs", "{92921DC3-F
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BaseClasses", "baseclasses\BaseClasses.vcxproj", "{E8A3F6FA-AE1C-4C8E-A0B6-9C8480324EAA}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EVRPresenter", "EVRPresenter\EVRPresenter.vcxproj", "{6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -60,6 +62,14 @@ Global
 		{E8A3F6FA-AE1C-4C8E-A0B6-9C8480324EAA}.Release|Win32.Build.0 = Release|Win32
 		{E8A3F6FA-AE1C-4C8E-A0B6-9C8480324EAA}.Release|x64.ActiveCfg = Release|x64
 		{E8A3F6FA-AE1C-4C8E-A0B6-9C8480324EAA}.Release|x64.Build.0 = Release|x64
+		{6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD}.Debug|Win32.Build.0 = Debug|Win32
+		{6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD}.Debug|x64.ActiveCfg = Debug|x64
+		{6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD}.Debug|x64.Build.0 = Debug|x64
+		{6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD}.Release|Win32.ActiveCfg = Release|Win32
+		{6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD}.Release|Win32.Build.0 = Release|Win32
+		{6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD}.Release|x64.ActiveCfg = Release|x64
+		{6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -67,5 +77,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{3BE86A9B-FF7A-4649-9FED-0F553B618A77} = {92921DC3-F26C-4225-ACBC-D4CC5523B8EB}
 		{E8A3F6FA-AE1C-4C8E-A0B6-9C8480324EAA} = {92921DC3-F26C-4225-ACBC-D4CC5523B8EB}
+		{6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD} = {92921DC3-F26C-4225-ACBC-D4CC5523B8EB}
 	EndGlobalSection
 EndGlobal
