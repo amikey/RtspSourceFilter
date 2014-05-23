@@ -1,10 +1,8 @@
 #include <Windows.h>
+
 #include <tchar.h>
-#include <stdio.h>
 #include <dshow.h>
 #include <atlbase.h>
-#include <InitGuid.h>
-#include <comdef.h>
 
 #include <cstdint>
 #include <string>
@@ -17,11 +15,12 @@
 #endif
 
 // {AF645432-7263-49C1-9FA3-E6DA0B346EAB}
-DEFINE_GUID(CLSID_RtspSourceFilter, 
-0xaf645432, 0x7263, 0x49c1, 0x9f, 0xa3, 0xe6, 0xda, 0xb, 0x34, 0x6e, 0xab);
+static const GUID CLSID_RtspSourceFilter = 
+{ 0xaf645432, 0x7263, 0x49c1, { 0x9f, 0xa3, 0xe6, 0xda, 0xb, 0x34, 0x6e, 0xab } };
+
 // {EE30215D-164F-4A92-A4EB-9D4C13390F9F}
-DEFINE_GUID(CLSID_LAVVideo,
-0xEE30215D, 0x164F, 0x4A92, 0xA4, 0xEB, 0x9D, 0x4C, 0x13, 0x39, 0x0F, 0x9F);
+static const GUID CLSID_LAVVideo =
+{ 0xEE30215D, 0x164F, 0x4A92, { 0xA4, 0xEB, 0x9D, 0x4C, 0x13, 0x39, 0x0F, 0x9F } };
 
 MIDL_INTERFACE("C4D310F4-160D-408D-9A60-3C6275E2D3B2")
 IRtspSourceConfig : public IUnknown
