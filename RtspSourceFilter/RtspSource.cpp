@@ -255,6 +255,9 @@ HRESULT RtspSourceFilter::Run(REFERENCE_TIME tStart)
         }
     }
 
+    /// TODO: If a user decide not to connect audio or video pin and they are created
+    ///       we are going to push media packets without any consumer
+
     HRESULT hr = __super::Run(tStart);
     if (SUCCEEDED(hr))
         // Start playing asynchronously
