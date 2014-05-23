@@ -14,6 +14,7 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RtspSourceFilterTest", "RtspSourceFilterTest\RtspSourceFilterTest.vcxproj", "{ED349FD9-3283-4959-8CBB-F644654B081C}"
 	ProjectSection(ProjectDependencies) = postProject
 		{6FB45804-EE28-498E-A879-B8EB3D9DDF86} = {6FB45804-EE28-498E-A879-B8EB3D9DDF86}
+		{6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD} = {6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD}
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libs", "Libs", "{92921DC3-F26C-4225-ACBC-D4CC5523B8EB}"
@@ -23,6 +24,10 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EVRPresenter", "EVRPresenter\EVRPresenter.vcxproj", "{6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RtspSourceWpf", "RtspSourceWpf\RtspSourceWpf.csproj", "{B3DE9334-F768-4112-B388-CCBC60653912}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6FB45804-EE28-498E-A879-B8EB3D9DDF86} = {6FB45804-EE28-498E-A879-B8EB3D9DDF86}
+		{6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD} = {6205CD54-6F42-4F1B-B488-4ACFD7ABEFDD}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

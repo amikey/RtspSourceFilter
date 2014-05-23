@@ -7,12 +7,9 @@
 #include <cstdint>
 #include <string>
 #include <iostream>
-#include <thread>
 
-#if defined(_M_X64) || defined(__amd64__)
-#  include <wmcodecdsp.h>
-#  pragma comment(lib, "wmcodecdspuuid.lib")
-#endif
+#include "LAVVideoSettings.h"
+#include "EVRPresenter.h"
 
 // {AF645432-7263-49C1-9FA3-E6DA0B346EAB}
 static const GUID CLSID_RtspSourceFilter = 
@@ -33,7 +30,8 @@ IRtspSourceConfig : public IUnknown
     STDMETHOD_(void, StopStreaming()) = 0;
 };
 
-#define BREAK_FAIL(x) if (FAILED(hr = (x))) break;;
+#define BREAK_FAIL(x) if (FAILED(hr = (x))) break;
+//#define USE_EVR
 
 int main()
 {
@@ -50,7 +48,7 @@ int main()
         {
             //pRtspConfig->SetStreamingOverTcp(TRUE);
             //pRtspConfig->SetTunnelingOverHttpPort(80);
-            //pRtspConfig->SetInitialSeekTime(0.0);
+            //pRtspConfig->SetInitialSeekTime(50.0);
             pRtspConfig->SetLatency(500);
             pRtspConfig->SetAutoReconnectionPeriod(5000);
         }
@@ -58,7 +56,8 @@ int main()
         CComQIPtr<IFileSourceFilter> fileRtspSource = pRtspSource;
         if (fileRtspSource)
         {
-            BREAK_FAIL(fileRtspSource->Load(L"rtsp://184.72.239.149/vod/mp4:BigBuckBunny_115k.mov",
+            BREAK_FAIL(fileRtspSource->Load(//L"rtsp://localhost:8554/live",
+                                            L"rtsp://184.72.239.149/vod/mp4:BigBuckBunny_115k.mov",
                                             nullptr));
         }
         else
@@ -67,14 +66,37 @@ int main()
         }
 
         CComPtr<IBaseFilter> pDecoder;
-#if defined(_M_X64) || defined(__amd64__)
-        BREAK_FAIL(pDecoder.CoCreateInstance(CLSID_CMPEG2VidDecoderDS));
-#else
         BREAK_FAIL(pDecoder.CoCreateInstance(CLSID_LAVVideo));
-#endif
 
-        CComPtr<IBaseFilter> pVmr;
-        BREAK_FAIL(pVmr.CoCreateInstance(CLSID_VideoMixingRenderer9));
+        CComQIPtr<ILAVVideoSettings> settings = pDecoder;
+        if (settings)
+        {
+            settings->SetRuntimeConfig(TRUE);
+            settings->SetNumThreads(1);
+            settings->SetHWAccel(HWAccel_DXVA2Native);
+        }
+#ifndef USE_EVR
+        CComPtr<IBaseFilter> pVideoRenderer;
+        BREAK_FAIL(pVideoRenderer.CoCreateInstance(CLSID_VideoMixingRenderer9));
+#else
+        CComPtr<EVRPresenter> presenter(new EVRPresenter());
+
+        CComPtr<IMFVideoPresenter> pCustomEvrPresenter;
+        BREAK_FAIL(pCustomEvrPresenter.CoCreateInstance(CLSID_CustomEVRPresenter));
+
+        CComQIPtr<IMFVideoDisplayControl> displayControl = pCustomEvrPresenter;
+        displayControl->SetVideoWindow(GetDesktopWindow());
+
+        CComQIPtr<IEVRPresenterRegisterCallback> registerCb = pCustomEvrPresenter;
+        registerCb->RegisterCallback(presenter);
+        CComQIPtr<IEVRPresenterSettings> evrSettings = pCustomEvrPresenter;
+        evrSettings->SetBufferCount(3);
+
+        CComPtr<IBaseFilter> pVideoRenderer;
+        BREAK_FAIL(pVideoRenderer.CoCreateInstance(CLSID_EnhancedVideoRenderer));
+        CComQIPtr<IMFVideoRenderer> pEvrPresenter = pVideoRenderer;
+        BREAK_FAIL(pEvrPresenter->InitializeRenderer(nullptr, pCustomEvrPresenter));
+#endif
 
         CComPtr<IGraphBuilder> pGraph;
         BREAK_FAIL(pGraph.CoCreateInstance(CLSID_FilterGraph));
@@ -84,13 +106,13 @@ int main()
 
         pGraph->AddFilter(pRtspSource, L"livestream");
         pGraph->AddFilter(pDecoder, L"H.264 Video Decoder");
-        pGraph->AddFilter(pVmr, L"Video Mixing Renderer 9");
+        pGraph->AddFilter(pVideoRenderer, L"Video Renderer");
         pGraph->AddFilter(pAudioDevice, L"DirectSound Device");
 
         CComPtr<ICaptureGraphBuilder2> pBuilder;
         BREAK_FAIL(pBuilder.CoCreateInstance(CLSID_CaptureGraphBuilder2));
         BREAK_FAIL(pBuilder->SetFiltergraph(pGraph));
-        BREAK_FAIL(pBuilder->RenderStream(nullptr, &MEDIATYPE_Video, pRtspSource, pDecoder, pVmr));
+        BREAK_FAIL(pBuilder->RenderStream(nullptr, &MEDIATYPE_Video, pRtspSource, pDecoder, pVideoRenderer));
         BREAK_FAIL(pBuilder->RenderStream(nullptr, &MEDIATYPE_Audio, pRtspSource, nullptr, pAudioDevice));
 
         CComQIPtr<IMediaControl> pMediaControl = pGraph;
@@ -99,8 +121,13 @@ int main()
         if (!pMediaControl || !pMediaEvent)
             break;
 
-        BREAK_FAIL(pMediaControl->Run());
+        CComQIPtr<ILAVVideoStatus> status = pDecoder;
+        if (status)
+            fprintf(stderr, "Decoder name: %S\n", status->GetActiveDecoderName());
 
+        BREAK_FAIL(pMediaControl->Run());
+        //LONG evCode;
+        //pMediaEvent->WaitForCompletion(INFINITE, &evCode);
         MessageBoxA(NULL, "Blocking", "Blocking", MB_OK);
 
         pMediaControl->Stop();
