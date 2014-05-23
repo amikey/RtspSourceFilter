@@ -621,7 +621,7 @@ void RtspSourceFilter::HandlePlayResponse(int resultCode, char* resultString)
 
         if (_autoReconnectionMSecs > 0)
         {
-            _scheduler->scheduleDelayedTask(_autoReconnectionMSecs*1000, 
+            _reconnectionTimerTask = _scheduler->scheduleDelayedTask(_autoReconnectionMSecs*1000, 
                 &RtspSourceFilter::Reconnect, this);
             _state = State::Reconnecting;
             _currentRequest.SetValue(error::PlayFailed);
@@ -735,7 +735,7 @@ bool RtspSourceFilter::ScheduleNextReconnect()
 {
     if (_state == State::Reconnecting)
     {
-        _scheduler->scheduleDelayedTask(_autoReconnectionMSecs*1000, 
+        _reconnectionTimerTask = _scheduler->scheduleDelayedTask(_autoReconnectionMSecs*1000, 
             &RtspSourceFilter::Reconnect, this);
         // state is still Reconnecting
         _currentRequest.SetValue(error::ReconnectFailed);
