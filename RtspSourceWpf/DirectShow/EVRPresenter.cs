@@ -33,7 +33,7 @@ namespace RtspSourceWpf.DirectShow
         void SetBufferCount(int bufferCount);
     }
 
-    public class EVRPresenter : IEVRPresenterCallback
+    public class EVRPresenter : IEVRPresenterCallback, IDisposable
     {
         private IntPtr _lastSurface;
 
@@ -59,6 +59,15 @@ namespace RtspSourceWpf.DirectShow
             ((IEVRPresenterSettings)customEvr).SetBufferCount(3);
 
             return evrPresenter;
+        }
+
+        public void Dispose()
+        {
+            if (VideoPresenter != null)
+            {
+                ((IEVRPresenterRegisterCallback)VideoPresenter).RegisterCallback(null);
+            }
+            VideoPresenter = null;
         }
 
         public void PresentSurfaceCB(IntPtr pSurface)

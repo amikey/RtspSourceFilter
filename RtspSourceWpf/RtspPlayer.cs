@@ -26,6 +26,7 @@ namespace RtspSourceWpf
         private bool _isDone = false;
         private ManualResetEvent _initialReconnectEvent = new ManualResetEvent(false);
         private BlockingCollection<SessionCommand> _queue = new BlockingCollection<SessionCommand>();
+        private EVRPresenter _evrPresenter;
 
         private uint _autoReconnectionPeriod = 5000;
         public uint AutoReconnectionPeriod
@@ -120,15 +121,15 @@ namespace RtspSourceWpf
             var evrFilter = (IBaseFilter)evr;
 
             // Initialize the EVR renderer with our custom video presenter
-            var evrPresenter = EVRPresenter.Create();
-            ((IMFVideoRenderer)evr).InitializeRenderer(null, evrPresenter.VideoPresenter);
+            _evrPresenter = EVRPresenter.Create();
+            ((IMFVideoRenderer)evr).InitializeRenderer(null, _evrPresenter.VideoPresenter);
 
             // Configure the presenter with our hWnd
-            var displayControl = (IMFVideoDisplayControl)evrPresenter.VideoPresenter;
+            var displayControl = (IMFVideoDisplayControl)_evrPresenter.VideoPresenter;
             displayControl.SetVideoWindow(_hwnd);
 
-            evrPresenter.NewSurfaceEvent += _player.NewSurface;
-            evrPresenter.NewFrameEvent += _player.NewFrame;
+            _evrPresenter.NewSurfaceEvent += _player.NewSurface;
+            _evrPresenter.NewFrameEvent += _player.NewFrame;
 
             return evrFilter;
         }
@@ -179,6 +180,7 @@ namespace RtspSourceWpf
 
                         case SessionCommand.Terminate:
                             mediaControl.Stop();
+                            _evrPresenter.Dispose();
                             return;
                     }
                 }
@@ -189,6 +191,11 @@ namespace RtspSourceWpf
                 {
                     MessageBox.Show(ex.ToString());
                 }));
+            }
+            finally
+            {
+                if (_evrPresenter != null)
+                    _evrPresenter.Dispose();
             }
         }
     }
