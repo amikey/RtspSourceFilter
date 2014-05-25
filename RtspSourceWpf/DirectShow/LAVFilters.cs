@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace RtspSourceNET.DirectShow
+namespace RtspSourceWpf.DirectShow
 {
     [ComImport, Guid("EE30215D-164F-4A92-A4EB-9D4C13390F9F")]
     class LAVVideo

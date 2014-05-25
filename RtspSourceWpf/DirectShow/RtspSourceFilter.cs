@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace RtspSourceNET.DirectShow
+namespace RtspSourceWpf.DirectShow
 {
     [ComImport, Guid("AF645432-7263-49C1-9FA3-E6DA0B346EAB")]
     class RtspSourceFilter

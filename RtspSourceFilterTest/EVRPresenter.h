@@ -34,7 +34,7 @@ public:
 class EVRPresenter : public IEVRPresenterCallback
 {
 public:
-    EVRPresenter() : _surface(nullptr), _refCount(0) {}
+    EVRPresenter() : _surface(nullptr), _refCount(1) {}
 
     virtual HRESULT STDMETHODCALLTYPE PresentSurfaceCB(IDirect3DSurface9* pSurface)
     {
@@ -57,17 +57,20 @@ public:
         if (riid == __uuidof(IEVRPresenterCallback))
         {
             *pvObject = static_cast<IEVRPresenterCallback*>(this);
-            AddRef();
-            return S_OK;
+
         }
         else if (riid == IID_IUnknown)
         {
             *pvObject = static_cast<IUnknown*>(this);
-            AddRef();
-            return S_OK;
+        }
+        else
+        {
+            *pvObject = NULL;
+            return E_NOINTERFACE;
         }
 
-        return E_NOINTERFACE;
+        AddRef();
+        return S_OK;
     }
 
     virtual ULONG STDMETHODCALLTYPE AddRef(void)

@@ -5,7 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using DirectShowLib;
-using RtspSourceNET.DirectShow;
+using RtspSourceWpf.DirectShow;
 
 namespace RtspSourceWpf
 {

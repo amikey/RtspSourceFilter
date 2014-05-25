@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Security;
 
-namespace RtspSourceNET.DirectShow
+namespace RtspSourceWpf.DirectShow
 {
     [ComImport, Guid("B21F3368-7260-4B45-9179-BA51590E3B9E")]
     internal class CustomEVRPresenter

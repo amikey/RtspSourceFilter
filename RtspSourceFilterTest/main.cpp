@@ -79,7 +79,8 @@ int main()
         CComPtr<IBaseFilter> pVideoRenderer;
         BREAK_FAIL(pVideoRenderer.CoCreateInstance(CLSID_VideoMixingRenderer9));
 #else
-        CComPtr<EVRPresenter> presenter(new EVRPresenter());
+        CComPtr<EVRPresenter> presenter;
+        presenter.Attach(new EVRPresenter());
 
         CComPtr<IMFVideoPresenter> pCustomEvrPresenter;
         BREAK_FAIL(pCustomEvrPresenter.CoCreateInstance(CLSID_CustomEVRPresenter));

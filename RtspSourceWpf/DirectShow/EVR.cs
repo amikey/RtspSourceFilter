@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace RtspSourceNET.DirectShow
+namespace RtspSourceWpf.DirectShow
 {
     [ComImport, Guid("FA10746C-9B63-4b6c-BC49-FC300EA5F256")]
     public class EnhancedVideoRenderer

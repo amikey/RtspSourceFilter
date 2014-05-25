@@ -299,7 +299,7 @@ HRESULT D3DPresentEngine::CheckDeviceState(DeviceState *pState)
     {
     case S_OK:
     case S_PRESENT_OCCLUDED:
-      case S_PRESENT_MODE_CHANGED:
+    case S_PRESENT_MODE_CHANGED:
         // state is DeviceOK
         hr = S_OK;
         break;
@@ -562,10 +562,6 @@ done:
 //
 // pSwapChain: Pointer to the swap chain.
 // pSurface: Pointer to the swap chain's back buffer surface.
-
-//
-// Note: This method simply calls IDirect3DSwapChain9::Present, but a derived 
-// class could do something fancier.
 //-----------------------------------------------------------------------------
 
 HRESULT D3DPresentEngine::PresentSwapChain(IDirect3DSwapChain9* pSwapChain, IDirect3DSurface9* pSurface)
