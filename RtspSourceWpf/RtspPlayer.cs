@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using DirectShowLib;
+using Microsoft.Win32.SafeHandles;
 using RtspSourceWpf.DirectShow;
 
 namespace RtspSourceWpf
@@ -26,6 +28,7 @@ namespace RtspSourceWpf
         private bool _isDone = false;
         private ManualResetEvent _initialReconnectEvent = new ManualResetEvent(false);
         private BlockingCollection<SessionCommand> _queue = new BlockingCollection<SessionCommand>();
+        private AutoResetEvent _manualRequest = new AutoResetEvent(false);
         private EVRPresenter _evrPresenter;
 
         private uint _autoReconnectionPeriod = 5000;
@@ -52,6 +55,7 @@ namespace RtspSourceWpf
             _initialReconnectEvent.Set();
 
             _queue.Add(SessionCommand.Terminate);
+            _manualRequest.Set();
 
             if (_workerThread != null)
             {
@@ -65,11 +69,13 @@ namespace RtspSourceWpf
         public void Play()
         {
             _queue.Add(SessionCommand.Play);
+            _manualRequest.Set();
         }
 
         public void Stop()
         {
             _queue.Add(SessionCommand.Stop);
+            _manualRequest.Set();
         }
 
         private IBaseFilter GetSourceFilter()
@@ -164,26 +170,54 @@ namespace RtspSourceWpf
                 captureGraphBuilder.RenderStream(null, MediaType.Audio, sourceFilter, null, soundOutputFilter);
 
                 var mediaControl = (IMediaControl)filterGraph;
+                var mediaEvent = (IMediaEvent)filterGraph;
+
+                // Get media event handler
+                IntPtr ptr;
+                mediaEvent.GetEventHandle(out ptr);
+
+                var hMediaEvent = new ManualResetEvent(false);
+                hMediaEvent.SafeWaitHandle = new SafeWaitHandle(ptr, false);
+
+                EventCode eventCode;
+                IntPtr lParam1, lParam2;
 
                 while (true)
                 {
-                    SessionCommand cmd = _queue.Take();
-                    switch (cmd)
+                    WaitHandle[] waitHandles = { hMediaEvent, _manualRequest };
+                    int res = EventWaitHandle.WaitAny(waitHandles, Timeout.Infinite);
+
+                    if (res == 0)
                     {
-                        case SessionCommand.Play:
+                        // Media event
+                        mediaEvent.GetEvent(out eventCode, out lParam1, out lParam2, 0);
+                        mediaEvent.FreeEventParams(eventCode, lParam1, lParam2);
+                    }
+                    else /* if (res == 1) */
+                    {
+                        SessionCommand cmd = _queue.Take();
+                        Debug.WriteLine("Request: {0}", cmd);
+
+                        if (cmd == SessionCommand.Play)
+                        {
                             mediaControl.Run();
+                        }
+                        else if(cmd == SessionCommand.Stop)
+                        {
+                            mediaControl.StopWhenReady();
+                        }
+                        else if (cmd == SessionCommand.Terminate)
+                        {
+                            mediaControl.StopWhenReady();
                             break;
-
-                        case SessionCommand.Stop:
-                            mediaControl.Stop();
-                            break;
-
-                        case SessionCommand.Terminate:
-                            mediaControl.Stop();
-                            _evrPresenter.Dispose();
-                            return;
+                        }
+                        else
+                        {
+                            Debug.WriteLine("Request {0} not supported", cmd);
+                        }
                     }
                 }
+
             }
             catch(Exception ex)
             {
@@ -256,7 +290,6 @@ namespace RtspSourceWpf
                 }
 
                 _session = new DirectShowSession(this, rtspUrl, _hwndSource);
-                _session.Play();
             }
         }
 
