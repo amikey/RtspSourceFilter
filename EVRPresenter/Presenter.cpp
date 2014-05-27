@@ -115,10 +115,6 @@ HRESULT EVRCustomPresenter::QueryInterface(REFIID riid, void ** ppv)
     {
         *ppv = static_cast<IEVRPresenterRegisterCallback*>(this);
     }
-    else if (riid == __uuidof(IEVRPresenterSettings))
-    {
-        *ppv = static_cast<IEVRPresenterSettings*>(this);
-    }
     else if (riid == __uuidof(IEVRTrustedVideoPlugin))
     {
         *ppv = static_cast<IEVRTrustedVideoPlugin*>(this);
@@ -2154,11 +2150,6 @@ HRESULT EVRCustomPresenter::RegisterCallback(IEVRPresenterCallback *pCallback)
 { 
     m_pD3DPresentEngine->RegisterCallback(pCallback);
     return S_OK; 
-}
-
-HRESULT EVRCustomPresenter::SetBufferCount(int bufferCount)
-{
-    return m_pD3DPresentEngine->SetBufferCount(bufferCount);
 }
 
 HRESULT EVRCustomPresenter::IsInTrustedVideoMode(BOOL *pYes)

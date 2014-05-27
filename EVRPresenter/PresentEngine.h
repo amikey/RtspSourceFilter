@@ -64,9 +64,7 @@ public:
     HRESULT PresentSample(IMFSample* pSample, LONGLONG llTarget); 
 
     UINT    RefreshRate() const { return m_DisplayMode.RefreshRate; }
-
     HRESULT RegisterCallback(IEVRPresenterCallback *pCallback);
-    HRESULT SetBufferCount(int bufferCount);
 
 protected:
     HRESULT InitializeD3D();

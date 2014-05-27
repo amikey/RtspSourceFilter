@@ -15,7 +15,7 @@
 #include "EVRPresenter.h"
 
 HRESULT FindAdapter(IDirect3D9 *pD3D9, HMONITOR hMonitor, UINT *puAdapterID);
-
+const DWORD PRESENTER_BUFFER_COUNT = 3;
 
 //-----------------------------------------------------------------------------
 // Constructor
@@ -30,7 +30,7 @@ D3DPresentEngine::D3DPresentEngine(HRESULT& hr) :
     m_pSurfaceRepaint(NULL),
     m_pCallback(NULL),
     m_pRenderSurface(NULL),
-    m_bufferCount(4)
+    m_bufferCount(PRESENTER_BUFFER_COUNT)
 {
     SetRectEmpty(&m_rcDestRect);
 
@@ -665,18 +665,6 @@ HRESULT D3DPresentEngine::RegisterCallback(IEVRPresenterCallback *pCallback)
     m_pCallback = pCallback;
     if(m_pCallback)
         m_pCallback->AddRef();
-    return S_OK;
-}
-
-//-----------------------------------------------------------------------------
-// SetBufferCount
-//
-// Sets the total number of buffers to use when the EVR
-// custom presenter is running.
-//-----------------------------------------------------------------------------
-HRESULT D3DPresentEngine::SetBufferCount(int bufferCount)
-{
-    m_bufferCount = bufferCount;
     return S_OK;
 }
 

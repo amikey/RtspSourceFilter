@@ -70,7 +70,6 @@ class EVRCustomPresenter :
     public IMFTopologyServiceLookupClient,
     public IMFVideoDisplayControl,
     public IEVRPresenterRegisterCallback,
-    public IEVRPresenterSettings,
     public IEVRTrustedVideoPlugin
 {
 
@@ -128,9 +127,6 @@ public:
 
     // IEVRPresenterRegisterCallback methods
     STDMETHOD(RegisterCallback)(IEVRPresenterCallback *pCallback);
-
-    // IEVRPresenterSettings methods
-    STDMETHOD(SetBufferCount)(int bufferCount);
 
     // IEVRTrustedVideoPlugin methods
     STDMETHOD(IsInTrustedVideoMode)(BOOL *pYes);        

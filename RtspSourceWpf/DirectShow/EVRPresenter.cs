@@ -25,14 +25,6 @@ namespace RtspSourceWpf.DirectShow
         void RegisterCallback(IEVRPresenterCallback pCallback);
     }
 
-    [ComVisible(true), ComImport, SuppressUnmanagedCodeSecurity,
-     Guid("9B594575-859E-4848-812B-441406F94E5F"),
-     InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    internal interface IEVRPresenterSettings
-    {
-        void SetBufferCount(int bufferCount);
-    }
-
     public class EVRPresenter : IEVRPresenterCallback, IPresenter
     {
         private IntPtr _lastSurface;
@@ -51,9 +43,6 @@ namespace RtspSourceWpf.DirectShow
 
             // Register for present callback
             ((IEVRPresenterRegisterCallback)customEvr).RegisterCallback(evrPresenter);
-
-            // Set buffer count
-            ((IEVRPresenterSettings)customEvr).SetBufferCount(3);
 
             return evrPresenter;
         }
