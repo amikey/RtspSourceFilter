@@ -28,7 +28,6 @@ IRtspSourceConfig : public IUnknown
     STDMETHOD_(void, SetTunnelingOverHttpPort(WORD tunnelOverHttpPort)) = 0;
     STDMETHOD_(void, SetAutoReconnectionPeriod(DWORD dwMSecs)) = 0;
     STDMETHOD_(void, SetLatency(DWORD dwMSecs)) = 0;
-    STDMETHOD_(void, StopStreaming()) = 0;
 };
 
 #define BREAK_FAIL(x) if (FAILED(hr = (x))) break;

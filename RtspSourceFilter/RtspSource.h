@@ -56,7 +56,6 @@ public:
     STDMETHODIMP_(void) SetTunnelingOverHttpPort(WORD tunnelOverHttpPort);
     STDMETHODIMP_(void) SetAutoReconnectionPeriod(DWORD dwMSecs);
     STDMETHODIMP_(void) SetLatency(DWORD dwMSecs);
-    STDMETHODIMP_(void) StopStreaming();
 
     DECLARE_IUNKNOWN
 

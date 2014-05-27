@@ -26,8 +26,5 @@ namespace RtspSourceWpf.DirectShow
 
         [PreserveSig]
         void SetLatency([In] uint dwMSecs);
-
-        [PreserveSig]
-        void StopStreaming();
     }
 }

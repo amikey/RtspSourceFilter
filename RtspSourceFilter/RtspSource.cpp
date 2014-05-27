@@ -297,13 +297,6 @@ void RtspSourceFilter::SetLatency(DWORD dwMSecs)
     _latencyMSecs = dwMSecs;
 }
 
-void RtspSourceFilter::StopStreaming()
-{
-    // Blocking call
-    // Guarantees that filter is in initial state when done
-    AsyncShutdown().get();
-}
-
 RtspAsyncResult RtspSourceFilter::AsyncOpenUrl(const std::string& url)
 {
     return MakeRequest(RtspAsyncRequest::Open, url);
