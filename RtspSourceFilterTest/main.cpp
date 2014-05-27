@@ -76,57 +76,50 @@ int main()
             settings->SetHWAccel(HWAccel_DXVA2Native);
         }
 
-#ifndef USE_EVR
         CComPtr<IBaseFilter> pVideoRenderer;
+
+#ifndef USE_EVR
         BREAK_FAIL(pVideoRenderer.CoCreateInstance(CLSID_VideoMixingRenderer9));
 
         CComQIPtr<IVMRFilterConfig9> pFilterConfig = pVideoRenderer;
-        if (pFilterConfig == NULL)
-        {
-            hr = E_NOINTERFACE;
-            break;
-        }
+        if (pFilterConfig == NULL) { hr = E_NOINTERFACE; break; }
 
-        pFilterConfig->SetRenderingMode(VMR9Mode_Renderless);
-        pFilterConfig->SetNumberOfStreams(1);
-
-        CComQIPtr<IVMRSurfaceAllocatorNotify9> pSurfaceAllocatorNotify = pVideoRenderer;
-        if (pSurfaceAllocatorNotify == NULL)
-        {
-            hr = E_NOINTERFACE;
-            break;
-        }
+        BREAK_FAIL(pFilterConfig->SetRenderingMode(VMR9Mode_Renderless));
+        BREAK_FAIL(pFilterConfig->SetNumberOfStreams(1));
 
         CComPtr<IVMRSurfaceAllocator9> pCustomVmrPresenter;
         BREAK_FAIL(pCustomVmrPresenter.CoCreateInstance(CLSID_CustomVMR9Presenter));
 
+        CComQIPtr<IVMRSurfaceAllocatorNotify9> pSurfaceAllocatorNotify = pVideoRenderer;
+        if (pSurfaceAllocatorNotify == NULL) { hr = E_NOINTERFACE; break; }
         BREAK_FAIL(pSurfaceAllocatorNotify->AdviseSurfaceAllocator(0xACDCACDC, pCustomVmrPresenter));
         BREAK_FAIL(pCustomVmrPresenter->AdviseNotify(pSurfaceAllocatorNotify));
 
         CComPtr<VMR9Presenter> presenter;
         presenter.Attach(new VMR9Presenter());
         CComQIPtr<IVMR9PresenterRegisterCallback> registerCb = pCustomVmrPresenter;
-        registerCb->RegisterCallback(presenter);
+        if (registerCb == NULL) { hr = E_NOINTERFACE; break; }
+        BREAK_FAIL(registerCb->RegisterCallback(presenter));
 
 #else
-        CComPtr<EVRPresenter> presenter;
-        presenter.Attach(new EVRPresenter());
+        BREAK_FAIL(pVideoRenderer.CoCreateInstance(CLSID_EnhancedVideoRenderer));
 
         CComPtr<IMFVideoPresenter> pCustomEvrPresenter;
         BREAK_FAIL(pCustomEvrPresenter.CoCreateInstance(CLSID_CustomEVRPresenter));
 
         CComQIPtr<IMFVideoDisplayControl> displayControl = pCustomEvrPresenter;
-        displayControl->SetVideoWindow(GetDesktopWindow());
+        if (displayControl == NULL) { hr = E_NOINTERFACE; break; }
+        BREAK_FAIL(displayControl->SetVideoWindow(GetDesktopWindow()));
 
-        CComQIPtr<IEVRPresenterRegisterCallback> registerCb = pCustomEvrPresenter;
-        registerCb->RegisterCallback(presenter);
-        CComQIPtr<IEVRPresenterSettings> evrSettings = pCustomEvrPresenter;
-        evrSettings->SetBufferCount(3);
-
-        CComPtr<IBaseFilter> pVideoRenderer;
-        BREAK_FAIL(pVideoRenderer.CoCreateInstance(CLSID_EnhancedVideoRenderer));
         CComQIPtr<IMFVideoRenderer> pEvrPresenter = pVideoRenderer;
+        if (pEvrPresenter == NULL) { hr = E_NOINTERFACE; break; }
         BREAK_FAIL(pEvrPresenter->InitializeRenderer(nullptr, pCustomEvrPresenter));
+
+        CComPtr<EVRPresenter> presenter;
+        presenter.Attach(new EVRPresenter());
+        CComQIPtr<IEVRPresenterRegisterCallback> registerCb = pCustomEvrPresenter;
+        if (registerCb == NULL) { hr = E_NOINTERFACE; break; }
+        BREAK_FAIL(registerCb->RegisterCallback(presenter));
 #endif
 
         CComPtr<IGraphBuilder> pGraph;
@@ -162,7 +155,8 @@ int main()
         MessageBoxA(NULL, "Blocking", "Blocking", MB_OK);
 
         pMediaControl->Stop();
-    } while (0);
+    } 
+    while (0);
 
     if (FAILED(hr))
         fprintf(stderr, "Error: 0x%08x\n", hr);
