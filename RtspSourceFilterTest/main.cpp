@@ -10,6 +10,7 @@
 
 #include "LAVVideoSettings.h"
 #include "EVRPresenter.h"
+#include "VMR9Presenter.h"
 
 // {AF645432-7263-49C1-9FA3-E6DA0B346EAB}
 static const GUID CLSID_RtspSourceFilter = 
@@ -31,7 +32,7 @@ IRtspSourceConfig : public IUnknown
 };
 
 #define BREAK_FAIL(x) if (FAILED(hr = (x))) break;
-//#define USE_EVR
+#define USE_EVR
 
 int main()
 {
@@ -75,9 +76,39 @@ int main()
             settings->SetNumThreads(1);
             settings->SetHWAccel(HWAccel_DXVA2Native);
         }
+
 #ifndef USE_EVR
         CComPtr<IBaseFilter> pVideoRenderer;
         BREAK_FAIL(pVideoRenderer.CoCreateInstance(CLSID_VideoMixingRenderer9));
+
+        CComQIPtr<IVMRFilterConfig9> pFilterConfig = pVideoRenderer;
+        if (pFilterConfig == NULL)
+        {
+            hr = E_NOINTERFACE;
+            break;
+        }
+
+        pFilterConfig->SetRenderingMode(VMR9Mode_Renderless);
+        pFilterConfig->SetNumberOfStreams(1);
+
+        CComQIPtr<IVMRSurfaceAllocatorNotify9> pSurfaceAllocatorNotify = pVideoRenderer;
+        if (pSurfaceAllocatorNotify == NULL)
+        {
+            hr = E_NOINTERFACE;
+            break;
+        }
+
+        CComPtr<IVMRSurfaceAllocator9> pCustomVmrPresenter;
+        BREAK_FAIL(pCustomVmrPresenter.CoCreateInstance(CLSID_CustomVMR9Presenter));
+
+        BREAK_FAIL(pSurfaceAllocatorNotify->AdviseSurfaceAllocator(0xACDCACDC, pCustomVmrPresenter));
+        BREAK_FAIL(pCustomVmrPresenter->AdviseNotify(pSurfaceAllocatorNotify));
+
+        CComPtr<VMR9Presenter> presenter;
+        presenter.Attach(new VMR9Presenter());
+        CComQIPtr<IVMR9PresenterRegisterCallback> registerCb = pCustomVmrPresenter;
+        registerCb->RegisterCallback(presenter);
+
 #else
         CComPtr<EVRPresenter> presenter;
         presenter.Attach(new EVRPresenter());
