@@ -1057,6 +1057,7 @@ void RtspSourceFilter::WorkerThread()
             case RtspAsyncRequest::Reconnect:
                 _currentRequest = std::move(req);
                 _state = State::Reconnecting;
+                UnscheduleAllDelayedTasks();
                 CloseSession();
                 CloseClient();
                 OpenUrl(_rtspUrl);
