@@ -33,14 +33,11 @@ namespace RtspSourceWpf.DirectShow
         void SetBufferCount(int bufferCount);
     }
 
-    public class EVRPresenter : IEVRPresenterCallback, IDisposable
+    public class EVRPresenter : IEVRPresenterCallback, IPresenter
     {
         private IntPtr _lastSurface;
 
         public IMFVideoPresenter VideoPresenter { get; private set; }
-
-        public delegate void NewSurfaceDelegate(IntPtr surfacePtr);
-        public delegate void NewFrameDelegate();
 
         public event NewSurfaceDelegate NewSurfaceEvent;
         public event NewFrameDelegate NewFrameEvent;

@@ -29,7 +29,7 @@ namespace RtspSourceWpf
         private ManualResetEvent _initialReconnectEvent = new ManualResetEvent(false);
         private BlockingCollection<SessionCommand> _queue = new BlockingCollection<SessionCommand>();
         private AutoResetEvent _manualRequest = new AutoResetEvent(false);
-        private EVRPresenter _evrPresenter;
+        private IPresenter _customPresenter;
 
         private uint _autoReconnectionPeriod = 5000;
         public uint AutoReconnectionPeriod
@@ -127,15 +127,16 @@ namespace RtspSourceWpf
             var evrFilter = (IBaseFilter)evr;
 
             // Initialize the EVR renderer with our custom video presenter
-            _evrPresenter = EVRPresenter.Create();
-            ((IMFVideoRenderer)evr).InitializeRenderer(null, _evrPresenter.VideoPresenter);
+            var evrPresenter = EVRPresenter.Create();
+            ((IMFVideoRenderer)evr).InitializeRenderer(null, evrPresenter.VideoPresenter);
 
             // Configure the presenter with our hWnd
-            var displayControl = (IMFVideoDisplayControl)_evrPresenter.VideoPresenter;
+            var displayControl = (IMFVideoDisplayControl)evrPresenter.VideoPresenter;
             displayControl.SetVideoWindow(_hwnd);
 
-            _evrPresenter.NewSurfaceEvent += _player.NewSurface;
-            _evrPresenter.NewFrameEvent += _player.NewFrame;
+            _customPresenter = evrPresenter;
+            _customPresenter.NewSurfaceEvent += _player.NewSurface;
+            _customPresenter.NewFrameEvent += _player.NewFrame;
 
             return evrFilter;
         }
@@ -228,8 +229,8 @@ namespace RtspSourceWpf
             }
             finally
             {
-                if (_evrPresenter != null)
-                    _evrPresenter.Dispose();
+                if (_customPresenter != null)
+                    _customPresenter.Dispose();
             }
         }
     }
