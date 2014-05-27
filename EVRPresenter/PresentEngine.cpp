@@ -222,8 +222,6 @@ HRESULT D3DPresentEngine::CreateVideoSamples(
     // Get the swap chain parameters from the media type.
     CHECK_HR(hr = GetSwapChainPresentParameters(pFormat, &pp));
 
-    SAFE_RELEASE(m_pRenderSurface);
-
     // Create the video samples.
     for (int i = 0; i < m_bufferCount; i++)
     {
@@ -401,6 +399,24 @@ done:
 // private/protected methods
 //-----------------------------------------------------------------------------
 
+HRESULT D3DPresentEngine::OnCreateVideoSamples(D3DPRESENT_PARAMETERS& pp)
+{
+    // Create a surface the same size as our sample
+    HRESULT hr = m_pDevice->CreateRenderTarget(pp.BackBufferWidth, 
+                                               pp.BackBufferHeight, 
+                                               pp.BackBufferFormat, 
+                                               pp.MultiSampleType, 
+                                               pp.MultiSampleQuality, 
+                                               true, 
+                                               &m_pRenderSurface, 
+                                               NULL);
+    return hr;
+}
+
+void D3DPresentEngine::OnReleaseResources()
+{
+    SAFE_RELEASE(m_pRenderSurface);
+}
 
 //-----------------------------------------------------------------------------
 // InitializeD3D
@@ -571,58 +587,6 @@ HRESULT D3DPresentEngine::PresentSwapChain(IDirect3DSwapChain9* pSwapChain, IDir
     if (m_hwnd == NULL)
     {
         return MF_E_INVALIDREQUEST;
-    }
-
-    if(!m_pRenderSurface)
-    {
-        D3DSURFACE_DESC desc;
-        
-        // Get the surface description
-        pSurface->GetDesc(&desc);
-
-        // Create a surface the same size as our sample
-        hr = m_pDevice->CreateRenderTarget(desc.Width, 
-                                           desc.Height, 
-                                           desc.Format, 
-                                           desc.MultiSampleType, 
-                                           desc.MultiSampleQuality, 
-                                           true, 
-                                           &m_pRenderSurface, 
-                                           NULL);
-        if (FAILED(hr)) 
-            return hr;
-    }
-
-    if(m_pRenderSurface)
-    {
-        D3DSURFACE_DESC originalDesc;
-        // Get the surface description of this sample
-        pSurface->GetDesc(&originalDesc);
-
-        D3DSURFACE_DESC renderDesc;
-        // Get the surface description of the render surface
-        m_pRenderSurface->GetDesc(&renderDesc);
-
-        // Compare the descriptions to make sure they match
-        if(originalDesc.Width != renderDesc.Width || 
-           originalDesc.Height != renderDesc.Height ||
-           originalDesc.Format != renderDesc.Format)
-        {
-            // Release the old render surface
-            SAFE_RELEASE(m_pRenderSurface);
-            
-            // Create a new render surface that matches the size of this surface 
-            hr = m_pDevice->CreateRenderTarget(originalDesc.Width, 
-                                               originalDesc.Height, 
-                                               originalDesc.Format, 
-                                               originalDesc.MultiSampleType, 
-                                               originalDesc.MultiSampleQuality, 
-                                               true, 
-                                               &m_pRenderSurface, 
-                                               NULL);
-            if (FAILED(hr)) 
-                return hr;
-        }
     }
 
     if(m_pRenderSurface)
