@@ -173,7 +173,8 @@ int main()
             if (dwRes == WAIT_OBJECT_0)
             {
                 // Media event from filter graph
-                LONG evCode, param1, param2;
+                LONG evCode;
+                LONG_PTR param1, param2;
                 pMediaEvent->GetEvent(&evCode, &param1, &param2, 0);
                 // Ignore it
                 pMediaEvent->FreeEventParams(evCode, param1, param2);
