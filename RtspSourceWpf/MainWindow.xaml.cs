@@ -33,7 +33,7 @@ namespace RtspSourceWpf
                 _player.Dispose();
             }
 
-            _player = new RtspPlayer();
+            _player = new RtspPlayer(VideoRendererType.EnhancedVideoRenderer);
             videoGrid.Children.Add(_player);
             _player.VerticalContentAlignment = System.Windows.VerticalAlignment.Stretch;
             _player.HorizontalContentAlignment = System.Windows.HorizontalAlignment.Stretch;

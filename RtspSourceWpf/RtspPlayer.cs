@@ -18,6 +18,12 @@ namespace RtspSourceWpf
         Terminate
     }
 
+    public enum VideoRendererType
+    {
+        VideoMixingRenderer,
+        EnhancedVideoRenderer
+    }
+
     internal class DirectShowSession : IDisposable
     {
         private readonly RtspPlayer _player;
@@ -30,6 +36,7 @@ namespace RtspSourceWpf
         private BlockingCollection<SessionCommand> _queue = new BlockingCollection<SessionCommand>();
         private AutoResetEvent _manualRequest = new AutoResetEvent(false);
         private IPresenter _customPresenter;
+        private VideoRendererType _videoRendererType;
 
         private uint _autoReconnectionPeriod = 5000;
         public uint AutoReconnectionPeriod
@@ -38,11 +45,13 @@ namespace RtspSourceWpf
             set { _autoReconnectionPeriod = value; }
         }
 
-        public DirectShowSession(RtspPlayer player, String rtspUrl, IntPtr hwnd)
+        public DirectShowSession(RtspPlayer player, String rtspUrl,
+            IntPtr hwnd, VideoRendererType videoRendererType)
         {
             _player = player;
             _rtspUrl = rtspUrl;
             _hwnd = hwnd;
+            _videoRendererType = videoRendererType;
             _workerThread = new Thread(WorkerThread);
             _workerThread.Start();
         }
@@ -121,24 +130,52 @@ namespace RtspSourceWpf
             return videoDecoder;
         }
 
-        private IBaseFilter GetRendererFilter()
+        private IBaseFilter GetRendererFilter(VideoRendererType videoRendererType)
         {
-            var evr = new EnhancedVideoRenderer();
-            var evrFilter = (IBaseFilter)evr;
+            switch(videoRendererType)
+            {
+                case VideoRendererType.EnhancedVideoRenderer:
+                    var evr = new EnhancedVideoRenderer();
+                    var evrFilter = (IBaseFilter)evr;
 
-            // Initialize the EVR renderer with our custom video presenter
-            var evrPresenter = EVRPresenter.Create();
-            ((IMFVideoRenderer)evr).InitializeRenderer(null, evrPresenter.VideoPresenter);
+                    // Initialize the EVR renderer with our custom video presenter
+                    var evrPresenter = EVRPresenter.Create();
+                    ((IMFVideoRenderer)evr).InitializeRenderer(null, evrPresenter.VideoPresenter);
 
-            // Configure the presenter with our hWnd
-            var displayControl = (IMFVideoDisplayControl)evrPresenter.VideoPresenter;
-            displayControl.SetVideoWindow(_hwnd);
+                    // Configure the presenter with our hWnd
+                    var displayControl = (IMFVideoDisplayControl)evrPresenter.VideoPresenter;
+                    displayControl.SetVideoWindow(_hwnd);
 
-            _customPresenter = evrPresenter;
-            _customPresenter.NewSurfaceEvent += _player.NewSurface;
-            _customPresenter.NewFrameEvent += _player.NewFrame;
+                    _customPresenter = evrPresenter;
+                    _customPresenter.NewSurfaceEvent += _player.NewSurface;
+                    _customPresenter.NewFrameEvent += _player.NewFrame;
 
-            return evrFilter;
+                    return evrFilter;
+
+                case VideoRendererType.VideoMixingRenderer:
+                    var vmr = new VideoMixingRenderer9();
+                    var vmrFilter = (IBaseFilter)vmr;
+
+                    var vmrPresenter = VMR9Presenter.Create();
+
+                    // Initialize the VMR renderer with out custom video presenter
+                    var filterConfig = (IVMRFilterConfig9)vmr;
+                    filterConfig.SetRenderingMode(VMR9Mode.Renderless);
+                    filterConfig.SetNumberOfStreams(1);
+
+                    var surfaceAllocatorNotify = (IVMRSurfaceAllocatorNotify9)vmr;
+
+                    surfaceAllocatorNotify.AdviseSurfaceAllocator(IntPtr.Zero, vmrPresenter.SurfaceAllocator);
+                    vmrPresenter.SurfaceAllocator.AdviseNotify(surfaceAllocatorNotify);
+
+                    _customPresenter = vmrPresenter;
+                    _customPresenter.NewSurfaceEvent += _player.NewSurface;
+                    _customPresenter.NewFrameEvent += _player.NewFrame;
+
+                    return vmrFilter;
+            }
+
+            return null;
         }
 
         private IBaseFilter GetSoundOutputFilter()
@@ -157,7 +194,7 @@ namespace RtspSourceWpf
                     return;
 
                 var decoderFilter = GetDecoderFilter();
-                var rendererFilter = GetRendererFilter();
+                var rendererFilter = GetRendererFilter(_videoRendererType);
                 var soundOutputFilter = GetSoundOutputFilter();
 
                 filterGraph.AddFilter(sourceFilter, "Source");
@@ -244,12 +281,20 @@ namespace RtspSourceWpf
         private DirectShowSession _session = null;
         private bool _isDisposed = false;
         private object _sync = new object();
+        private VideoRendererType _videoRendererType;
 
         public RtspPlayer()
+            : this(VideoRendererType.EnhancedVideoRenderer)
         {
-            Loaded += RtspPlayer_Loaded;
+        }
+
+        public RtspPlayer(VideoRendererType videoRendererType)
+        {
+            _videoRendererType = videoRendererType;
             _d3dImage.IsFrontBufferAvailableChanged += IsFrontBufferAvailableChanged;
             _image.Source = _d3dImage;
+
+            Loaded += RtspPlayer_Loaded;
             Content = _image;
         }
 
@@ -290,7 +335,7 @@ namespace RtspSourceWpf
                         throw new NullReferenceException("HwndSource is null");
                 }
 
-                _session = new DirectShowSession(this, rtspUrl, _hwndSource);
+                _session = new DirectShowSession(this, rtspUrl, _hwndSource, _videoRendererType);
             }
         }
 

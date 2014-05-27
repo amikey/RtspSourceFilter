@@ -86,6 +86,7 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="DirectShow\VMR9Presenter.cs" />
     <Compile Include="IPresenter.cs" />
     <Compile Include="RtspPlayer.cs" />
     <Compile Include="DirectShow\EVR.cs" />
