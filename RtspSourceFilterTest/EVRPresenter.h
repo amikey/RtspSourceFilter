@@ -24,13 +24,6 @@ public:
     STDMETHOD(RegisterCallback)(IEVRPresenterCallback *pCallback) = 0;
 };
 
-MIDL_INTERFACE("9B594575-859E-4848-812B-441406F94E5F")
-IEVRPresenterSettings : public IUnknown
-{
-public:
-    STDMETHOD(SetBufferCount)(int bufferCount) = 0;
-};
-
 class EVRPresenter : public IEVRPresenterCallback
 {
 public:
