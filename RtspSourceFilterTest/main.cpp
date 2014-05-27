@@ -186,6 +186,8 @@ int main()
             }
         }
 
+        CloseHandle(hManualRequest);
+
         pMediaControl->Stop();
     } 
     while (0);
