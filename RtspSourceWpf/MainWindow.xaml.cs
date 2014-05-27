@@ -43,6 +43,7 @@ namespace RtspSourceWpf
         private void player_Loaded(object sender, RoutedEventArgs e)
         {
             _player.Connect(RtspUrlTextBox.Text);
+            _player.Play();
         }
 
         private void StopClicked(object sender, RoutedEventArgs e)
