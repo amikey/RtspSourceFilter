@@ -8,6 +8,8 @@
 #include <string>
 #include <iostream>
 
+#include <thread>
+
 #include "LAVVideoSettings.h"
 #include "EVRPresenter.h"
 #include "VMR9Presenter.h"
@@ -150,9 +152,39 @@ int main()
             fprintf(stderr, "Decoder name: %S\n", status->GetActiveDecoderName());
 
         BREAK_FAIL(pMediaControl->Run());
-        //LONG evCode;
-        //pMediaEvent->WaitForCompletion(INFINITE, &evCode);
-        MessageBoxA(NULL, "Blocking", "Blocking", MB_OK);
+
+        //MessageBoxA(NULL, "Blocking", "Blocking", MB_OK);
+
+        HANDLE hManualRequest = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+        HANDLE hMediaEvent;
+        pMediaEvent->GetEventHandle((OAEVENT*)&hMediaEvent);
+
+        // Stop streaming from different thread using event for manual request
+        std::thread th([&] {
+            std::this_thread::sleep_for(std::chrono::seconds(15));
+            SetEvent(hManualRequest);
+        });
+        th.detach();
+
+        while (true)
+        {
+            HANDLE handles[] = { hMediaEvent, hManualRequest };
+            DWORD dwRes = WaitForMultipleObjects(sizeof(handles) / sizeof(handles[0]), handles, FALSE, INFINITE);
+            if (dwRes == WAIT_OBJECT_0)
+            {
+                // Media event from filter graph
+                LONG evCode, param1, param2;
+                pMediaEvent->GetEvent(&evCode, &param1, &param2, 0);
+                // Ignore it
+                pMediaEvent->FreeEventParams(evCode, param1, param2);
+            }
+            else // if (dwRes == WAIT_OBJECT_0 + 1)
+            {
+                // Manual request from "the outside"
+                // Could also get a command from command queue
+                break;
+            }
+        }
 
         pMediaControl->Stop();
     } 
