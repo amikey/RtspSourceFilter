@@ -81,7 +81,6 @@ protected:
 protected:
     IEVRPresenterCallback      *m_pCallback;
     UINT                        m_DeviceResetToken;     // Reset token for the D3D device manager.
-    int                         m_bufferCount;
 
     HWND                        m_hwnd;                 // Application-provided destination window.
     RECT						m_rcDestRect;

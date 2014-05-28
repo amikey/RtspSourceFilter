@@ -29,8 +29,7 @@ D3DPresentEngine::D3DPresentEngine(HRESULT& hr) :
     m_pDeviceManager(NULL),
     m_pSurfaceRepaint(NULL),
     m_pCallback(NULL),
-    m_pRenderSurface(NULL),
-    m_bufferCount(PRESENTER_BUFFER_COUNT)
+    m_pRenderSurface(NULL)
 {
     SetRectEmpty(&m_rcDestRect);
 
@@ -223,7 +222,7 @@ HRESULT D3DPresentEngine::CreateVideoSamples(
     CHECK_HR(hr = GetSwapChainPresentParameters(pFormat, &pp));
 
     // Create the video samples.
-    for (int i = 0; i < m_bufferCount; i++)
+    for (int i = 0; i < PRESENTER_BUFFER_COUNT; i++)
     {
         // Create a new swap chain.
         CHECK_HR(hr = m_pDevice->CreateAdditionalSwapChain(&pp, &pSwapChain));
@@ -589,12 +588,13 @@ HRESULT D3DPresentEngine::PresentSwapChain(IDirect3DSwapChain9* pSwapChain, IDir
         return MF_E_INVALIDREQUEST;
     }
 
-    if(m_pRenderSurface)
-        m_pDevice->StretchRect(pSurface, nullptr, m_pRenderSurface, nullptr, D3DTEXF_NONE);
-
     // Do the callback, passing the rendered surface
-    if(m_pCallback)
-        hr = m_pCallback->PresentSurfaceCB(m_pRenderSurface);
+    if (m_pCallback && m_pRenderSurface)
+    {
+        hr = m_pDevice->StretchRect(pSurface, nullptr, m_pRenderSurface, nullptr, D3DTEXF_NONE);
+        if (SUCCEEDED(hr))
+            hr = m_pCallback->PresentSurfaceCB(m_pRenderSurface);
+    }
 
     LOG_MSG_IF_FAILED(L"D3DPresentEngine::PresentSwapChain failed.", hr);
 

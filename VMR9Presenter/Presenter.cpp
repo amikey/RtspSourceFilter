@@ -217,7 +217,6 @@ HRESULT VMR9CustomPresenter::TerminateDevice(DWORD_PTR dwID)
         SAFE_RELEASE(m_Surfaces[i]);
     m_Surfaces.clear();
 
-
     return S_OK;
 }
 

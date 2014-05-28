@@ -8,13 +8,9 @@
 #include <streams.h>
 #include <source.h>
 
-// Disable deprecated warnings
-#pragma warning(push)
-#pragma warning(disable : 4995)
 #include <string>
 #include <thread>
 #include <memory>
-#pragma warning(pop)
 
 #include "ConcurrentQueue.h"
 #include "RtspAsyncRequest.h"

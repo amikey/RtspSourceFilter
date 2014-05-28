@@ -31,7 +31,7 @@ public:
     STDMETHOD(PresentImage)(DWORD_PTR dwUserID, VMR9PresentationInfo* lpPresInfo);
 
     // IVMR9PresenterRegisterCallback
-    STDMETHOD(IVMR9PresenterRegisterCallback::RegisterCallback)(IVMR9PresenterCallback* pCallback);
+    STDMETHOD(RegisterCallback)(IVMR9PresenterCallback* pCallback);
 
 protected:
     VMR9CustomPresenter(HRESULT& hr);
