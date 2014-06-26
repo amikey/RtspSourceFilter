@@ -1,13 +1,9 @@
 #include <Windows.h>
-
-#include <tchar.h>
-#include <dshow.h>
-#include <atlbase.h>
+#include <comdef.h>
 
 #include <cstdint>
 #include <string>
 #include <iostream>
-
 #include <thread>
 
 #include "LAVVideoSettings.h"
@@ -32,126 +28,121 @@ IRtspSourceConfig : public IUnknown
     STDMETHOD_(void, SetLatency(DWORD dwMSecs)) = 0;
 };
 
-#define BREAK_FAIL(x) if (FAILED(hr = (x))) break;
 #define USE_EVR
+
+_COM_SMARTPTR_TYPEDEF(IBaseFilter, __uuidof(IBaseFilter));
+_COM_SMARTPTR_TYPEDEF(IRtspSourceConfig, __uuidof(IRtspSourceConfig));
+_COM_SMARTPTR_TYPEDEF(IFileSourceFilter, __uuidof(IFileSourceFilter));
+_COM_SMARTPTR_TYPEDEF(ILAVVideoSettings, __uuidof(ILAVVideoSettings));
+_COM_SMARTPTR_TYPEDEF(IGraphBuilder, __uuidof(IGraphBuilder));
+_COM_SMARTPTR_TYPEDEF(IVMRFilterConfig9, __uuidof(IVMRFilterConfig9));
+_COM_SMARTPTR_TYPEDEF(IVMRSurfaceAllocatorNotify9, __uuidof(IVMRSurfaceAllocatorNotify9));
+_COM_SMARTPTR_TYPEDEF(IVMRSurfaceAllocator9, __uuidof(IVMRSurfaceAllocator9));
+_COM_SMARTPTR_TYPEDEF(IVMR9PresenterRegisterCallback, __uuidof(IVMR9PresenterRegisterCallback));
+_COM_SMARTPTR_TYPEDEF(VMR9Presenter, __uuidof(VMR9Presenter));
+_COM_SMARTPTR_TYPEDEF(IMFVideoPresenter, __uuidof(IMFVideoPresenter));
+_COM_SMARTPTR_TYPEDEF(IMFVideoDisplayControl, __uuidof(IMFVideoDisplayControl));
+_COM_SMARTPTR_TYPEDEF(IMFVideoRenderer, __uuidof(IMFVideoRenderer));
+_COM_SMARTPTR_TYPEDEF(EVRPresenter, __uuidof(EVRPresenter));
+_COM_SMARTPTR_TYPEDEF(IEVRPresenterRegisterCallback, __uuidof(IEVRPresenterRegisterCallback));
+_COM_SMARTPTR_TYPEDEF(IGraphBuilder, __uuidof(IGraphBuilder));
+_COM_SMARTPTR_TYPEDEF(ICaptureGraphBuilder2, __uuidof(ICaptureGraphBuilder2));
+_COM_SMARTPTR_TYPEDEF(IMediaControl, __uuidof(IMediaControl));
+_COM_SMARTPTR_TYPEDEF(IMediaEvent, __uuidof(IMediaEvent));
+_COM_SMARTPTR_TYPEDEF(ILAVVideoStatus, __uuidof(ILAVVideoStatus));
 
 int main()
 {
     HRESULT hr;
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
-    do
+    try
     {
-        CComPtr<IBaseFilter> pRtspSource;
-        BREAK_FAIL(pRtspSource.CoCreateInstance(CLSID_RtspSourceFilter));
+        IBaseFilterPtr pRtspSource(CLSID_RtspSourceFilter);
 
-        CComQIPtr<IRtspSourceConfig> pRtspConfig = pRtspSource;
-        if (pRtspConfig)
-        {
-            //pRtspConfig->SetStreamingOverTcp(TRUE);
-            //pRtspConfig->SetTunnelingOverHttpPort(80);
-            //pRtspConfig->SetInitialSeekTime(50.0);
-            pRtspConfig->SetLatency(500);
-            pRtspConfig->SetAutoReconnectionPeriod(5000);
-        }
+        IRtspSourceConfigPtr pRtspConfig(pRtspSource);
+        //pRtspConfig->SetStreamingOverTcp(TRUE);
+        //pRtspConfig->SetTunnelingOverHttpPort(80);
+        //pRtspConfig->SetInitialSeekTime(50.0);
+        pRtspConfig->SetLatency(500);
+        pRtspConfig->SetAutoReconnectionPeriod(5000);
 
-        CComQIPtr<IFileSourceFilter> fileRtspSource = pRtspSource;
-        if (fileRtspSource)
-        {
-            BREAK_FAIL(fileRtspSource->Load(//L"rtsp://localhost:8554/live",
-                                            L"rtsp://184.72.239.149/vod/mp4:BigBuckBunny_115k.mov",
-                                            nullptr));
-        }
-        else
-        {
-            break;
-        }
+        IFileSourceFilterPtr fileRtspSource(pRtspSource);
+        hr = fileRtspSource->Load(L"rtsp://184.72.239.149/vod/mp4:BigBuckBunny_115k.mov", nullptr);
+        if (FAILED(hr)) _com_issue_error(hr);
 
-        CComPtr<IBaseFilter> pDecoder;
-        BREAK_FAIL(pDecoder.CoCreateInstance(CLSID_LAVVideo));
+        IBaseFilterPtr pDecoder(CLSID_LAVVideo);
 
-        CComQIPtr<ILAVVideoSettings> settings = pDecoder;
-        if (settings)
-        {
-            settings->SetRuntimeConfig(TRUE);
-            settings->SetNumThreads(1);
-            settings->SetHWAccel(HWAccel_DXVA2Native);
-        }
+        ILAVVideoSettingsPtr settings(pDecoder);
+        settings->SetRuntimeConfig(TRUE);
+        settings->SetNumThreads(1);
+        settings->SetHWAccel(HWAccel_DXVA2Native);
 
-        CComPtr<IBaseFilter> pVideoRenderer;
-
+        
 #ifndef USE_EVR
-        BREAK_FAIL(pVideoRenderer.CoCreateInstance(CLSID_VideoMixingRenderer9));
+        IBaseFilterPtr pVideoRenderer(CLSID_VideoMixingRenderer9);
 
-        CComQIPtr<IVMRFilterConfig9> pFilterConfig = pVideoRenderer;
-        if (pFilterConfig == NULL) { hr = E_NOINTERFACE; break; }
+        IVMRFilterConfig9Ptr pFilterConfig(pVideoRenderer);
+        hr = pFilterConfig->SetRenderingMode(VMR9Mode_Renderless);
+        if (FAILED(hr)) _com_issue_error(hr);
+        hr = pFilterConfig->SetNumberOfStreams(1);
+        if (FAILED(hr)) _com_issue_error(hr);
 
-        BREAK_FAIL(pFilterConfig->SetRenderingMode(VMR9Mode_Renderless));
-        BREAK_FAIL(pFilterConfig->SetNumberOfStreams(1));
+        IVMRSurfaceAllocator9Ptr pCustomVmrPresenter(CLSID_CustomVMR9Presenter);
+        IVMRSurfaceAllocatorNotify9Ptr pSurfaceAllocatorNotify(pVideoRenderer);
+        hr = pSurfaceAllocatorNotify->AdviseSurfaceAllocator(0xACDCACDC, pCustomVmrPresenter);
+        if (FAILED(hr)) _com_issue_error(hr);
+        hr = pCustomVmrPresenter->AdviseNotify(pSurfaceAllocatorNotify);
+        if (FAILED(hr)) _com_issue_error(hr);
 
-        CComPtr<IVMRSurfaceAllocator9> pCustomVmrPresenter;
-        BREAK_FAIL(pCustomVmrPresenter.CoCreateInstance(CLSID_CustomVMR9Presenter));
-
-        CComQIPtr<IVMRSurfaceAllocatorNotify9> pSurfaceAllocatorNotify = pVideoRenderer;
-        if (pSurfaceAllocatorNotify == NULL) { hr = E_NOINTERFACE; break; }
-        BREAK_FAIL(pSurfaceAllocatorNotify->AdviseSurfaceAllocator(0xACDCACDC, pCustomVmrPresenter));
-        BREAK_FAIL(pCustomVmrPresenter->AdviseNotify(pSurfaceAllocatorNotify));
-
-        CComPtr<VMR9Presenter> presenter;
+        VMR9PresenterPtr presenter;
         presenter.Attach(new VMR9Presenter());
-        CComQIPtr<IVMR9PresenterRegisterCallback> registerCb = pCustomVmrPresenter;
-        if (registerCb == NULL) { hr = E_NOINTERFACE; break; }
-        BREAK_FAIL(registerCb->RegisterCallback(presenter));
-
+        IVMR9PresenterRegisterCallbackPtr registerCb(pCustomVmrPresenter);
+        hr = registerCb->RegisterCallback(presenter);
+        if (FAILED(hr)) _com_issue_error(hr);
 #else
-        BREAK_FAIL(pVideoRenderer.CoCreateInstance(CLSID_EnhancedVideoRenderer));
+        IBaseFilterPtr pVideoRenderer(CLSID_EnhancedVideoRenderer);
+        IMFVideoPresenterPtr pCustomEvrPresenter(CLSID_CustomEVRPresenter);
 
-        CComPtr<IMFVideoPresenter> pCustomEvrPresenter;
-        BREAK_FAIL(pCustomEvrPresenter.CoCreateInstance(CLSID_CustomEVRPresenter));
+        IMFVideoDisplayControlPtr displayControl(pCustomEvrPresenter);
+        hr = displayControl->SetVideoWindow(GetDesktopWindow());
+        if (FAILED(hr)) _com_issue_error(hr);
 
-        CComQIPtr<IMFVideoDisplayControl> displayControl = pCustomEvrPresenter;
-        if (displayControl == NULL) { hr = E_NOINTERFACE; break; }
-        BREAK_FAIL(displayControl->SetVideoWindow(GetDesktopWindow()));
+        IMFVideoRendererPtr pEvrPresenter(pVideoRenderer);
+        hr = pEvrPresenter->InitializeRenderer(nullptr, pCustomEvrPresenter);
+        if (FAILED(hr)) _com_issue_error(hr);
 
-        CComQIPtr<IMFVideoRenderer> pEvrPresenter = pVideoRenderer;
-        if (pEvrPresenter == NULL) { hr = E_NOINTERFACE; break; }
-        BREAK_FAIL(pEvrPresenter->InitializeRenderer(nullptr, pCustomEvrPresenter));
-
-        CComPtr<EVRPresenter> presenter;
+        EVRPresenterPtr presenter;
         presenter.Attach(new EVRPresenter());
-        CComQIPtr<IEVRPresenterRegisterCallback> registerCb = pCustomEvrPresenter;
-        if (registerCb == NULL) { hr = E_NOINTERFACE; break; }
-        BREAK_FAIL(registerCb->RegisterCallback(presenter));
+        IEVRPresenterRegisterCallbackPtr registerCb(pCustomEvrPresenter);
+        hr = registerCb->RegisterCallback(presenter);
+        if (FAILED(hr)) _com_issue_error(hr);
 #endif
 
-        CComPtr<IGraphBuilder> pGraph;
-        BREAK_FAIL(pGraph.CoCreateInstance(CLSID_FilterGraph));
-
-        CComPtr<IBaseFilter> pAudioDevice;
-        BREAK_FAIL(pAudioDevice.CoCreateInstance(CLSID_DSoundRender));
+        IGraphBuilderPtr pGraph(CLSID_FilterGraph);
+        IBaseFilterPtr pAudioDevice(CLSID_DSoundRender);
 
         pGraph->AddFilter(pRtspSource, L"livestream");
         pGraph->AddFilter(pDecoder, L"H.264 Video Decoder");
         pGraph->AddFilter(pVideoRenderer, L"Video Renderer");
         pGraph->AddFilter(pAudioDevice, L"DirectSound Device");
 
-        CComPtr<ICaptureGraphBuilder2> pBuilder;
-        BREAK_FAIL(pBuilder.CoCreateInstance(CLSID_CaptureGraphBuilder2));
-        BREAK_FAIL(pBuilder->SetFiltergraph(pGraph));
-        BREAK_FAIL(pBuilder->RenderStream(nullptr, &MEDIATYPE_Video, pRtspSource, pDecoder, pVideoRenderer));
-        BREAK_FAIL(pBuilder->RenderStream(nullptr, &MEDIATYPE_Audio, pRtspSource, nullptr, pAudioDevice));
+        ICaptureGraphBuilder2Ptr pBuilder(CLSID_CaptureGraphBuilder2);
+        hr = pBuilder->SetFiltergraph(pGraph);
+        if (FAILED(hr)) _com_issue_error(hr);
+        hr = pBuilder->RenderStream(nullptr, &MEDIATYPE_Video, pRtspSource, pDecoder, pVideoRenderer);
+        if (FAILED(hr)) _com_issue_error(hr);
+        hr = pBuilder->RenderStream(nullptr, &MEDIATYPE_Audio, pRtspSource, nullptr, pAudioDevice);
+        if (FAILED(hr)) _com_issue_error(hr);
 
-        CComQIPtr<IMediaControl> pMediaControl = pGraph;
-        CComQIPtr<IMediaEvent> pMediaEvent = pGraph;
+        IMediaControlPtr pMediaControl(pGraph);
+        IMediaEventPtr pMediaEvent(pGraph);
+        ILAVVideoStatusPtr status(pDecoder);
 
-        if (!pMediaControl || !pMediaEvent)
-            break;
+        fprintf(stderr, "Decoder name: %S\n", status->GetActiveDecoderName());
 
-        CComQIPtr<ILAVVideoStatus> status = pDecoder;
-        if (status)
-            fprintf(stderr, "Decoder name: %S\n", status->GetActiveDecoderName());
-
-        BREAK_FAIL(pMediaControl->Run());
+        hr = pMediaControl->Run();
+        if (FAILED(hr)) _com_issue_error(hr);
 
         //MessageBoxA(NULL, "Blocking", "Blocking", MB_OK);
 
@@ -189,12 +180,13 @@ int main()
 
         CloseHandle(hManualRequest);
 
-        pMediaControl->Stop();
-    } 
-    while (0);
-
-    if (FAILED(hr))
-        fprintf(stderr, "Error: 0x%08x\n", hr);
+        hr = pMediaControl->Stop();
+        if (FAILED(hr)) _com_issue_error(hr);
+    }
+    catch (_com_error& ex)
+    {
+        fprintf(stderr, "COM Exception! - %S\n", ex.ErrorMessage());
+    }
 
     CoUninitialize();
 }

@@ -24,7 +24,8 @@ public:
     STDMETHOD(RegisterCallback)(IEVRPresenterCallback *pCallback) = 0;
 };
 
-class EVRPresenter : public IEVRPresenterCallback
+class __declspec(uuid("805D43FB-B9FF-4A1D-B4FD-B65B1DCD486C"))
+EVRPresenter : public IEVRPresenterCallback
 {
 public:
     EVRPresenter() : _surface(nullptr), _refCount(1) {}

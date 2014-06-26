@@ -20,7 +20,8 @@ IVMR9PresenterRegisterCallback : public IUnknown
     STDMETHOD(RegisterCallback)(IVMR9PresenterCallback* pCallback) = 0;
 };
 
-class VMR9Presenter : public IVMR9PresenterCallback
+class __declspec(uuid("1F240F2B-2D62-4BA1-8D6C-8DD19B6A220F"))
+VMR9Presenter: public IVMR9PresenterCallback
 {
 public:
     VMR9Presenter() : _surface(nullptr), _refCount(1) {}
