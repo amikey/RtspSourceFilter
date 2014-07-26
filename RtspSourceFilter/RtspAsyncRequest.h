@@ -24,7 +24,7 @@ public:
     };
 
     /**
-     * Construct asynchronous RTSP request 
+     * Construct asynchronous RTSP request
      */
     explicit RtspAsyncRequest(Type request, std::string requestData = "")
         : _request(request), _requestData(std::move(requestData))
@@ -32,12 +32,9 @@ public:
     }
 
     /**
-     * Construct an invalid RTSP request 
+     * Construct an invalid RTSP request
      */
-    RtspAsyncRequest()
-        : _request(Unknown)
-    {
-    }
+    RtspAsyncRequest() : _request(Unknown) {}
 
     RtspAsyncRequest(const RtspAsyncRequest&) = delete;
     RtspAsyncRequest& operator=(const RtspAsyncRequest&) = delete;
@@ -76,12 +73,18 @@ inline const char* GetRtspAsyncRequestTypeString(RtspAsyncRequest::Type type)
 {
     switch (type)
     {
-    case RtspAsyncRequest::Open: return "Open";
-    case RtspAsyncRequest::Play: return "Play";
-    case RtspAsyncRequest::Stop: return "Stop";
-    case RtspAsyncRequest::Reconnect: return "Reconnect";
-    case RtspAsyncRequest::Done: return "Done";
+    case RtspAsyncRequest::Open:
+        return "Open";
+    case RtspAsyncRequest::Play:
+        return "Play";
+    case RtspAsyncRequest::Stop:
+        return "Stop";
+    case RtspAsyncRequest::Reconnect:
+        return "Reconnect";
+    case RtspAsyncRequest::Done:
+        return "Done";
     case RtspAsyncRequest::Unknown:
-    default: return "Unknown";
+    default:
+        return "Unknown";
     }
 }

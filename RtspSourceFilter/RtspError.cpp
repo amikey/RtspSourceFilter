@@ -24,11 +24,13 @@ public:
         case error::SdpInvalid:
             return "Failed to create a MediaSession object from the SDP description";
         case error::NoSubsessions:
-            return "MediaSession does not have any media subsessions (i.e, no \"m=\" lines)";
+            return "MediaSession does not have any media subsessions (i.e, no \"m=\" "
+                   "lines)";
         case error::SetupFailed:
             return "SETUP command failed";
         case error::NoSubsessionsSetup:
-            return "No subsession was setup - either none of them were supported or they couldn't be initialized";
+            return "No subsession was setup - either none of them were supported or "
+                   "they couldn't be initialized";
         case error::PlayFailed:
             return "Failed to start playing session";
         case error::SinkCreationFailed:

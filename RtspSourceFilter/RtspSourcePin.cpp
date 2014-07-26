@@ -27,17 +27,23 @@ namespace
     bool IsIdrFrame(const MediaPacketSample& mediaPacket);
 }
 
-RtspSourcePin::RtspSourcePin(HRESULT* phr, CSource* pFilter, 
-    MediaSubsession* mediaSubsession, MediaPacketQueue& mediaPacketQueue)
+RtspSourcePin::RtspSourcePin(HRESULT* phr, CSource* pFilter, MediaSubsession* mediaSubsession,
+                             MediaPacketQueue& mediaPacketQueue)
     : CSourceStream(TEXT("RtspSourcePin"), phr, pFilter,
                     !strcmp(mediaSubsession->mediumName(), "video") ? L"Video" : L"Audio")
-    , _mediaSubsession(mediaSubsession), _mediaPacketQueue(mediaPacketQueue)
-    , _codecFourCC(0), _currentPlayTime(0), _rtpPresentationTimeBaseline(0)
-    , _streamTimeBaseline(0), _firstSample(true), _rtcpSynced(false)
+    , _mediaSubsession(mediaSubsession)
+    , _mediaPacketQueue(mediaPacketQueue)
+    , _codecFourCC(0)
+    , _currentPlayTime(0)
+    , _rtpPresentationTimeBaseline(0)
+    , _streamTimeBaseline(0)
+    , _firstSample(true)
+    , _rtcpSynced(false)
 {
     _ASSERT(dynamic_cast<RtspSourceFilter*>(m_pFilter));
     HRESULT hr = InitializeMediaType();
-    if (phr) *phr = hr;
+    if (phr)
+        *phr = hr;
 }
 
 RtspSourcePin::~RtspSourcePin() {}
@@ -73,15 +79,14 @@ void RtspSourcePin::ResetTimeBaselines()
 
 REFERENCE_TIME RtspSourcePin::SynchronizeTimestamp(const MediaPacketSample& mediaSample)
 {
-    auto SyncWithMediaSample =
-        [this](const MediaPacketSample& mediaSample)
-        {
-            CRefTime streamTime;
-            m_pFilter->StreamTime(streamTime);
-            uint32_t latencyMSecs = static_cast<RtspSourceFilter*>(m_pFilter)->_latencyMSecs;
-            _streamTimeBaseline = streamTime.GetUnits() + latencyMSecs * 10000i64;
-            _rtpPresentationTimeBaseline = mediaSample.timestamp();
-        };
+    auto SyncWithMediaSample = [this](const MediaPacketSample& mediaSample)
+    {
+        CRefTime streamTime;
+        m_pFilter->StreamTime(streamTime);
+        uint32_t latencyMSecs = static_cast<RtspSourceFilter*>(m_pFilter)->_latencyMSecs;
+        _streamTimeBaseline = streamTime.GetUnits() + latencyMSecs * 10000i64;
+        _rtpPresentationTimeBaseline = mediaSample.timestamp();
+    };
 
     if (_firstSample)
     {
@@ -114,7 +119,8 @@ HRESULT RtspSourcePin::FillBuffer(IMediaSample* pSample)
 
     BYTE* pData;
     HRESULT hr = pSample->GetPointer(&pData);
-    if (FAILED(hr)) return hr;
+    if (FAILED(hr))
+        return hr;
     long length = pSample->GetSize();
 
     if (_codecFourCC == DWORD('h264'))
@@ -122,16 +128,18 @@ HRESULT RtspSourcePin::FillBuffer(IMediaSample* pSample)
         // Append SPS and PPS to the first packet (they come out-band)
         if (_firstSample)
         {
-            // Retrieve them from media type format buffer 
+            // Retrieve them from media type format buffer
             BYTE* decoderSpecific = (BYTE*)(((VIDEOINFOHEADER2*)_mediaType.Format()) + 1);
             ULONG decoderSpecificLength = _mediaType.FormatLength() - sizeof(VIDEOINFOHEADER2);
             memcpy_s(pData, length, decoderSpecific, decoderSpecificLength);
-            pData += decoderSpecificLength; length -= decoderSpecificLength;
+            pData += decoderSpecificLength;
+            length -= decoderSpecificLength;
         }
 
         // Append 4-byte start code 00 00 00 01 in network byte order that precedes each NALU
         ((uint32_t*)pData)[0] = 0x01000000;
-        pData += startCodesSize; length -= startCodesSize;
+        pData += startCodesSize;
+        length -= startCodesSize;
         // Finally copy media packet contens to IMediaSample
         memcpy_s(pData, length, mediaSample.data(), mediaSample.size());
         pSample->SetActualDataLength(mediaSample.size() + startCodesSize);
@@ -145,7 +153,8 @@ HRESULT RtspSourcePin::FillBuffer(IMediaSample* pSample)
         pData[1] = ((uint8_t*)&lengthField)[2];
         pData[2] = ((uint8_t*)&lengthField)[1];
         pData[3] = ((uint8_t*)&lengthField)[0];
-        pData += lengthFieldSize; length -= lengthFieldSize;
+        pData += lengthFieldSize;
+        length -= lengthFieldSize;
         // Finally copy media packet contens to IMediaSample
         memcpy_s(pData, length, mediaSample.data(), mediaSample.size());
         pSample->SetActualDataLength(mediaSample.size() + lengthFieldSize);
@@ -188,14 +197,13 @@ HRESULT RtspSourcePin::DecideBufferSize(IMemAllocator* pAlloc, ALLOCATOR_PROPERT
     CAutoLock cAutoLock(m_pFilter->pStateLock());
 
     // Video pin
-    if (m_mt.formattype == FORMAT_MPEG2Video || 
-        m_mt.formattype == FORMAT_VideoInfo2 || 
+    if (m_mt.formattype == FORMAT_MPEG2Video || m_mt.formattype == FORMAT_VideoInfo2 ||
         m_mt.formattype == FORMAT_VideoInfo)
     {
         // Ensure a minimum number of buffers
         if (pRequest->cBuffers == 0)
             pRequest->cBuffers = 10;
-        pRequest->cbBuffer = 256*1024; // Should be more than enough
+        pRequest->cbBuffer = 256 * 1024; // Should be more than enough
     }
     // Audio pin
     else
@@ -208,9 +216,11 @@ HRESULT RtspSourcePin::DecideBufferSize(IMemAllocator* pAlloc, ALLOCATOR_PROPERT
 
     ALLOCATOR_PROPERTIES Actual;
     HRESULT hr = pAlloc->SetProperties(pRequest, &Actual);
-    if (FAILED(hr)) return hr;
+    if (FAILED(hr))
+        return hr;
     // Is this allocator unsuitable?
-    if (Actual.cbBuffer < pRequest->cbBuffer) return E_FAIL;
+    if (Actual.cbBuffer < pRequest->cbBuffer)
+        return E_FAIL;
     return S_OK;
 }
 
@@ -254,8 +264,10 @@ namespace
 {
     HRESULT GetMediaTypeH264(CMediaType& mediaType, MediaSubsession& mediaSubsession)
     {
-        // We need to extract SPS and PPS from SDP attribute and append it to VIDEOINFOHEADER2 structure to be used later
-        // see: http://msdn.microsoft.com/en-us/library/dd757808%28v=vs.85%29.aspx, pg: H.264 Bitstream with Start Codes
+        // We need to extract SPS and PPS from SDP attribute and append it to VIDEOINFOHEADER2
+        // structure to be used later
+        // see: http://msdn.microsoft.com/en-us/library/dd757808%28v=vs.85%29.aspx, pg: H.264
+        // Bitstream with Start Codes
         unsigned numSPropRecords;
         SPropRecord* sPropRecords = ::parseSPropParameterSets(
             mediaSubsession.attrVal_str("sprop-parameter-sets"), numSPropRecords);
@@ -264,14 +276,16 @@ namespace
             decoderSpecificSize += sPropRecords[i].sPropLength + startCodesSize;
 
         // "Hide" decoder specific data in FormatBuffer
-        VIDEOINFOHEADER2* pVid = (VIDEOINFOHEADER2*)mediaType.AllocFormatBuffer(sizeof(VIDEOINFOHEADER2) + decoderSpecificSize);
-        if (!pVid) return E_OUTOFMEMORY;
+        VIDEOINFOHEADER2* pVid = (VIDEOINFOHEADER2*)mediaType.AllocFormatBuffer(
+            sizeof(VIDEOINFOHEADER2) + decoderSpecificSize);
+        if (!pVid)
+            return E_OUTOFMEMORY;
         ZeroMemory(pVid, sizeof(VIDEOINFOHEADER2) + decoderSpecificSize);
 
         unsigned videoWidth = 0, videoHeight = 0;
         double videoFramerate = 0.0;
 
-        // Move decoder specific data after FormatBuffer 
+        // Move decoder specific data after FormatBuffer
         BYTE* decoderSpecific = (BYTE*)(pVid + 1);
         for (unsigned i = 0; i < numSPropRecords; ++i)
         {
@@ -298,15 +312,15 @@ namespace
         SetRect(&pVid->rcSource, 0, 0, videoWidth, videoHeight);
         SetRect(&pVid->rcTarget, 0, 0, videoWidth, videoHeight);
 
-        REFERENCE_TIME timePerFrame = std::abs(videoFramerate) > 1e-6 ?
-            (REFERENCE_TIME)(UNITS / videoFramerate) : 0;
+        REFERENCE_TIME timePerFrame =
+            std::abs(videoFramerate) > 1e-6 ? (REFERENCE_TIME)(UNITS / videoFramerate) : 0;
         pVid->AvgTimePerFrame = timePerFrame;
 
         // BITMAPINFOHEADER
         pVid->bmiHeader.biSize = sizeof BITMAPINFOHEADER;
         pVid->bmiHeader.biWidth = videoWidth;
         pVid->bmiHeader.biHeight = videoHeight;
-        pVid->bmiHeader.biCompression = MAKEFOURCC('H','2','6','4');
+        pVid->bmiHeader.biCompression = MAKEFOURCC('H', '2', '6', '4');
 
         mediaType.SetType(&MEDIATYPE_Video);
         mediaType.SetSubtype(&MEDIASUBTYPE_H264);
@@ -319,8 +333,10 @@ namespace
 
     HRESULT GetMediaTypeAVC1(CMediaType& mediaType, MediaSubsession& mediaSubsession)
     {
-        // We need to extract SPS and PPS from SDP attribute and append it to MPEG2VIDEOINFO structure
-        // see: http://msdn.microsoft.com/en-us/library/dd757808%28v=vs.85%29.aspx, pg: H.264 Bitstream Without Start Codes
+        // We need to extract SPS and PPS from SDP attribute and append it to MPEG2VIDEOINFO
+        // structure
+        // see: http://msdn.microsoft.com/en-us/library/dd757808%28v=vs.85%29.aspx, pg: H.264
+        // Bitstream Without Start Codes
         unsigned numSPropRecords;
         SPropRecord* sPropRecords = parseSPropParameterSets(
             mediaSubsession.attrVal_str("sprop-parameter-sets"), numSPropRecords);
@@ -329,9 +345,10 @@ namespace
             decoderSpecificSize += sPropRecords[i].sPropLength + sequenceHeaderLengthFieldSize;
 
         // Allocate format buffer
-        size_t mpeg2VideoInfoBuffer = sizeof(MPEG2VIDEOINFO)+decoderSpecificSize - sizeof(DWORD);
+        size_t mpeg2VideoInfoBuffer = sizeof(MPEG2VIDEOINFO) + decoderSpecificSize - sizeof(DWORD);
         MPEG2VIDEOINFO* pVid = (MPEG2VIDEOINFO*)mediaType.AllocFormatBuffer(mpeg2VideoInfoBuffer);
-        if (!pVid) return E_OUTOFMEMORY;
+        if (!pVid)
+            return E_OUTOFMEMORY;
         ZeroMemory(pVid, sizeof(MPEG2VIDEOINFO));
 
         unsigned videoWidth = 0, videoHeight = 0;
@@ -358,7 +375,8 @@ namespace
             dstSequenceHeader[0] = ((uint8_t*)&lengthField)[1];
             dstSequenceHeader[1] = ((uint8_t*)&lengthField)[0];
 
-            memcpy(dstSequenceHeader + sequenceHeaderLengthFieldSize, prop.sPropBytes, prop.sPropLength);
+            memcpy(dstSequenceHeader + sequenceHeaderLengthFieldSize, prop.sPropBytes,
+                   prop.sPropLength);
             dstSequenceHeader += sequenceHeaderLengthFieldSize + prop.sPropLength;
         }
 
@@ -374,15 +392,15 @@ namespace
         SetRect(&pVid->hdr.rcSource, 0, 0, videoWidth, videoHeight);
         SetRect(&pVid->hdr.rcTarget, 0, 0, videoWidth, videoHeight);
 
-        REFERENCE_TIME timePerFrame = std::abs(videoFramerate) > 1e-6 ?
-            (REFERENCE_TIME)(UNITS / videoFramerate) : 0;
+        REFERENCE_TIME timePerFrame =
+            std::abs(videoFramerate) > 1e-6 ? (REFERENCE_TIME)(UNITS / videoFramerate) : 0;
         pVid->hdr.AvgTimePerFrame = timePerFrame;
 
         // BITMAPINFOHEADER
         pVid->hdr.bmiHeader.biSize = sizeof BITMAPINFOHEADER;
         pVid->hdr.bmiHeader.biWidth = videoWidth;
         pVid->hdr.bmiHeader.biHeight = videoHeight;
-        pVid->hdr.bmiHeader.biCompression = MAKEFOURCC('a','v','c','1');
+        pVid->hdr.bmiHeader.biCompression = MAKEFOURCC('a', 'v', 'c', '1');
 
         mediaType.SetType(&MEDIATYPE_Video);
         mediaType.SetSubtype(&MEDIASUBTYPE_AVC1);
@@ -401,32 +419,34 @@ namespace
         std::vector<uint8_t> decoderSpecific(decoderSpecificSize);
         for (int i = 0; i < decoderSpecificSize; ++i)
         {
-            char hexStr[] = { configuration[2*i], configuration[2*i + 1], '\0' };
+            char hexStr[] = {configuration[2 * i], configuration[2 * i + 1], '\0'};
             uint8_t hex = static_cast<uint8_t>(strtoul(hexStr, nullptr, 16));
             decoderSpecific[i] = hex;
         }
 
-        const int samplingFreqs[] = { 96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050,
-                                      16000, 12000, 11025, 8000,  7350,  0,     0,     0 };
+        const int samplingFreqs[] = {96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050,
+                                     16000, 12000, 11025, 8000,  7350,  0,     0,     0};
 
         const size_t waveFormatBufferSize = sizeof(WAVEFORMATEX) + decoderSpecificSize;
         WAVEFORMATEX* pWave = (WAVEFORMATEX*)mediaType.AllocFormatBuffer(waveFormatBufferSize);
-        if (!pWave) return E_OUTOFMEMORY;
+        if (!pWave)
+            return E_OUTOFMEMORY;
         ZeroMemory(pWave, waveFormatBufferSize);
 
         pWave->wFormatTag = WAVE_FORMAT_RAW_AAC1;
         pWave->nChannels = (decoderSpecific[1] & 0x78) >> 3;
-        pWave->nSamplesPerSec = samplingFreqs[((decoderSpecific[0] & 0x7) << 1) + ((decoderSpecific[1] & 0x80) >> 7)];
+        pWave->nSamplesPerSec =
+            samplingFreqs[((decoderSpecific[0] & 0x7) << 1) + ((decoderSpecific[1] & 0x80) >> 7)];
         pWave->nBlockAlign = 1;
-        //pWave->nAvgBytesPerSec = 0;
-        //pWave->wBitsPerSample = 16; // Can be 0 I guess
+        // pWave->nAvgBytesPerSec = 0;
+        // pWave->wBitsPerSample = 16; // Can be 0 I guess
         pWave->cbSize = decoderSpecificSize;
         CopyMemory(pWave + 1, decoderSpecific.data(), decoderSpecificSize);
 
         mediaType.SetType(&MEDIATYPE_Audio);
         mediaType.SetSubtype(&MEDIASUBTYPE_RAW_AAC1);
         mediaType.SetFormatType(&FORMAT_WaveFormatEx);
-        //mediaType.SetSampleSize(256000); // Set to 1 on InitMedia
+        // mediaType.SetSampleSize(256000); // Set to 1 on InitMedia
         mediaType.SetTemporalCompression(FALSE);
 
         return S_OK;
@@ -436,20 +456,21 @@ namespace
     HRESULT GetMediaTypeAC3(CMediaType& mediaType, MediaSubsession& mediaSubsession)
     {
         WAVEFORMATEX* pWave = (WAVEFORMATEX*)mediaType.AllocFormatBuffer(sizeof(WAVEFORMATEX));
-        if (!pWave) return E_OUTOFMEMORY;
+        if (!pWave)
+            return E_OUTOFMEMORY;
         ZeroMemory(pWave, sizeof(WAVEFORMATEX));
 
         // The RTP timestamp clock rate is equal to the audio sampling rate
         pWave->nSamplesPerSec = mediaSubsession.rtpTimestampFrequency();
         pWave->nChannels = mediaSubsession.numChannels();
-        pWave->nAvgBytesPerSec = mediaSubsession.bandwidth()*1024/8; //kbps to B/s
+        pWave->nAvgBytesPerSec = mediaSubsession.bandwidth() * 1024 / 8; // kbps to B/s
         pWave->nBlockAlign = 1;
-        //pWave->wBitsPerSample = 16; // Can be 0 I guess
+        // pWave->wBitsPerSample = 16; // Can be 0 I guess
 
         mediaType.SetType(&MEDIATYPE_Audio);
         mediaType.SetSubtype(&MEDIASUBTYPE_DOLBY_AC3);
         mediaType.SetFormatType(&FORMAT_WaveFormatEx);
-        //mediaType.SetSampleSize(256000);
+        // mediaType.SetSampleSize(256000);
         mediaType.SetTemporalCompression(FALSE);
 
         return S_OK;
@@ -460,7 +481,8 @@ namespace
     {
         const uint8_t* data = mediaPacket.data();
         // Take 5 LSBs and compare with 5 (IDR)
-        // More NAL types: http://gentlelogic.blogspot.com/2011/11/exploring-h264-part-2-h264-bitstream.html
+        // More NAL types:
+        // http://gentlelogic.blogspot.com/2011/11/exploring-h264-part-2-h264-bitstream.html
         return (data[0] & 0x1F) == 5;
     }
 }

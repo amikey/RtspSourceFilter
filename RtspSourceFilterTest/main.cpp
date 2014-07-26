@@ -69,7 +69,8 @@ int main()
 
         IFileSourceFilterPtr fileRtspSource(pRtspSource);
         hr = fileRtspSource->Load(L"rtsp://184.72.239.149/vod/mp4:BigBuckBunny_115k.mov", nullptr);
-        if (FAILED(hr)) _com_issue_error(hr);
+        if (FAILED(hr))
+            _com_issue_error(hr);
 
         IBaseFilterPtr pDecoder(CLSID_LAVVideo);
 
@@ -78,45 +79,52 @@ int main()
         settings->SetNumThreads(1);
         settings->SetHWAccel(HWAccel_DXVA2Native);
 
-        
 #ifndef USE_EVR
         IBaseFilterPtr pVideoRenderer(CLSID_VideoMixingRenderer9);
 
         IVMRFilterConfig9Ptr pFilterConfig(pVideoRenderer);
         hr = pFilterConfig->SetRenderingMode(VMR9Mode_Renderless);
-        if (FAILED(hr)) _com_issue_error(hr);
+        if (FAILED(hr))
+            _com_issue_error(hr);
         hr = pFilterConfig->SetNumberOfStreams(1);
-        if (FAILED(hr)) _com_issue_error(hr);
+        if (FAILED(hr))
+            _com_issue_error(hr);
 
         IVMRSurfaceAllocator9Ptr pCustomVmrPresenter(CLSID_CustomVMR9Presenter);
         IVMRSurfaceAllocatorNotify9Ptr pSurfaceAllocatorNotify(pVideoRenderer);
         hr = pSurfaceAllocatorNotify->AdviseSurfaceAllocator(0xACDCACDC, pCustomVmrPresenter);
-        if (FAILED(hr)) _com_issue_error(hr);
+        if (FAILED(hr))
+            _com_issue_error(hr);
         hr = pCustomVmrPresenter->AdviseNotify(pSurfaceAllocatorNotify);
-        if (FAILED(hr)) _com_issue_error(hr);
+        if (FAILED(hr))
+            _com_issue_error(hr);
 
         VMR9PresenterPtr presenter;
         presenter.Attach(new VMR9Presenter());
         IVMR9PresenterRegisterCallbackPtr registerCb(pCustomVmrPresenter);
         hr = registerCb->RegisterCallback(presenter);
-        if (FAILED(hr)) _com_issue_error(hr);
+        if (FAILED(hr))
+            _com_issue_error(hr);
 #else
         IBaseFilterPtr pVideoRenderer(CLSID_EnhancedVideoRenderer);
         IMFVideoPresenterPtr pCustomEvrPresenter(CLSID_CustomEVRPresenter);
 
         IMFVideoDisplayControlPtr displayControl(pCustomEvrPresenter);
         hr = displayControl->SetVideoWindow(GetDesktopWindow());
-        if (FAILED(hr)) _com_issue_error(hr);
+        if (FAILED(hr))
+            _com_issue_error(hr);
 
         IMFVideoRendererPtr pEvrPresenter(pVideoRenderer);
         hr = pEvrPresenter->InitializeRenderer(nullptr, pCustomEvrPresenter);
-        if (FAILED(hr)) _com_issue_error(hr);
+        if (FAILED(hr))
+            _com_issue_error(hr);
 
         EVRPresenterPtr presenter;
         presenter.Attach(new EVRPresenter());
         IEVRPresenterRegisterCallbackPtr registerCb(pCustomEvrPresenter);
         hr = registerCb->RegisterCallback(presenter);
-        if (FAILED(hr)) _com_issue_error(hr);
+        if (FAILED(hr))
+            _com_issue_error(hr);
 #endif
 
         IGraphBuilderPtr pGraph(CLSID_FilterGraph);
@@ -129,11 +137,15 @@ int main()
 
         ICaptureGraphBuilder2Ptr pBuilder(CLSID_CaptureGraphBuilder2);
         hr = pBuilder->SetFiltergraph(pGraph);
-        if (FAILED(hr)) _com_issue_error(hr);
-        hr = pBuilder->RenderStream(nullptr, &MEDIATYPE_Video, pRtspSource, pDecoder, pVideoRenderer);
-        if (FAILED(hr)) _com_issue_error(hr);
+        if (FAILED(hr))
+            _com_issue_error(hr);
+        hr = pBuilder->RenderStream(nullptr, &MEDIATYPE_Video, pRtspSource, pDecoder,
+                                    pVideoRenderer);
+        if (FAILED(hr))
+            _com_issue_error(hr);
         hr = pBuilder->RenderStream(nullptr, &MEDIATYPE_Audio, pRtspSource, nullptr, pAudioDevice);
-        if (FAILED(hr)) _com_issue_error(hr);
+        if (FAILED(hr))
+            _com_issue_error(hr);
 
         IMediaControlPtr pMediaControl(pGraph);
         IMediaEventPtr pMediaEvent(pGraph);
@@ -142,7 +154,8 @@ int main()
         fprintf(stderr, "Decoder name: %S\n", status->GetActiveDecoderName());
 
         hr = pMediaControl->Run();
-        if (FAILED(hr)) _com_issue_error(hr);
+        if (FAILED(hr))
+            _com_issue_error(hr);
 
         //MessageBoxA(NULL, "Blocking", "Blocking", MB_OK);
 
@@ -151,7 +164,8 @@ int main()
         pMediaEvent->GetEventHandle((OAEVENT*)&hMediaEvent);
 
         // Stop streaming from different thread using event for manual request
-        std::thread th([&] {
+        std::thread th([&]
+        {
             std::this_thread::sleep_for(std::chrono::seconds(15));
             SetEvent(hManualRequest);
         });
@@ -159,8 +173,9 @@ int main()
 
         while (true)
         {
-            HANDLE handles[] = { hMediaEvent, hManualRequest };
-            DWORD dwRes = WaitForMultipleObjects(sizeof(handles) / sizeof(handles[0]), handles, FALSE, INFINITE);
+            HANDLE handles[] = {hMediaEvent, hManualRequest};
+            DWORD dwRes = WaitForMultipleObjects(sizeof(handles) / sizeof(handles[0]), handles,
+                                                 FALSE, INFINITE);
             if (dwRes == WAIT_OBJECT_0)
             {
                 // Media event from filter graph
@@ -181,12 +196,10 @@ int main()
         CloseHandle(hManualRequest);
 
         hr = pMediaControl->Stop();
-        if (FAILED(hr)) _com_issue_error(hr);
+        if (FAILED(hr))
+            _com_issue_error(hr);
     }
-    catch (_com_error& ex)
-    {
-        fprintf(stderr, "COM Exception! - %S\n", ex.ErrorMessage());
-    }
+    catch (_com_error& ex) { fprintf(stderr, "COM Exception! - %S\n", ex.ErrorMessage()); }
 
     CoUninitialize();
 }

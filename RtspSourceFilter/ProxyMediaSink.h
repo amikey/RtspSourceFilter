@@ -13,14 +13,14 @@ class ProxyMediaSink : public MediaSink
 {
 public:
     ProxyMediaSink(UsageEnvironment& env, MediaSubsession& subsession,
-        MediaPacketQueue& mediaPacketQueue, size_t receiveBufferSize);
+                   MediaPacketQueue& mediaPacketQueue, size_t receiveBufferSize);
     virtual ~ProxyMediaSink();
 
-    static void afterGettingFrame(void* clientData, unsigned frameSize,
-        unsigned numTruncatedBytes, struct timeval presentationTime, unsigned durationInMicroseconds);
+    static void afterGettingFrame(void* clientData, unsigned frameSize, unsigned numTruncatedBytes,
+                                  struct timeval presentationTime, unsigned durationInMicroseconds);
 
     void afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes,
-        struct timeval presentationTime, unsigned durationInMicroseconds);
+                           struct timeval presentationTime, unsigned durationInMicroseconds);
 
 private:
     virtual Boolean continuePlaying();

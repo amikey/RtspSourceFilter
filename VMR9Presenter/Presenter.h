@@ -7,12 +7,12 @@
 
 using namespace MediaFoundationSamples;
 
-class VMR9CustomPresenter : public IVMRSurfaceAllocator9, 
+class VMR9CustomPresenter : public IVMRSurfaceAllocator9,
                             public IVMRImagePresenter9,
                             public IVMR9PresenterRegisterCallback
 {
 public:
-    static HRESULT CreateInstance(IUnknown *pUnkOuter, REFIID iid, void **ppv);
+    static HRESULT CreateInstance(IUnknown* pUnkOuter, REFIID iid, void** ppv);
 
     // IUnknown
     STDMETHOD(QueryInterface)(REFIID riid, void** ppvObject);
@@ -20,9 +20,11 @@ public:
     STDMETHOD_(ULONG, Release)();
 
     // IVMRSurfaceAllocator9
-    STDMETHOD(InitializeDevice)(DWORD_PTR dwUserID, VMR9AllocationInfo* lpAllocInfo, DWORD* lpNumBuffers);
+    STDMETHOD(InitializeDevice)(DWORD_PTR dwUserID, VMR9AllocationInfo* lpAllocInfo,
+                                DWORD* lpNumBuffers);
     STDMETHOD(TerminateDevice)(DWORD_PTR dwID);
-    STDMETHOD(GetSurface)(DWORD_PTR dwUserID, DWORD SurfaceIndex, DWORD SurfaceFlags, IDirect3DSurface9** lplpSurface);
+    STDMETHOD(GetSurface)(DWORD_PTR dwUserID, DWORD SurfaceIndex, DWORD SurfaceFlags,
+                          IDirect3DSurface9** lplpSurface);
     STDMETHOD(AdviseNotify)(IVMRSurfaceAllocatorNotify9* lpIVMRSurfAllocNotify);
 
     // IVMRImagePresenter9
@@ -41,13 +43,13 @@ protected:
     HRESULT CreateD3DDevice();
 
 private:
-    CritSec                          m_ObjectLock;
-    long                             m_RefCount;
-    IVMR9PresenterCallback*          m_pPresentCb;
+    CritSec m_ObjectLock;
+    long m_RefCount;
+    IVMR9PresenterCallback* m_pPresentCb;
 
-    IDirect3D9*                      m_pD3D9;
-    IDirect3DDevice9*                m_pDevice;
-    IVMRSurfaceAllocatorNotify9*     m_pSurfAllocNotify;
-    std::vector<IDirect3DSurface9*>  m_Surfaces;
-    bool                             m_D3D9Ex;
+    IDirect3D9* m_pD3D9;
+    IDirect3DDevice9* m_pDevice;
+    IVMRSurfaceAllocatorNotify9* m_pSurfAllocNotify;
+    std::vector<IDirect3DSurface9*> m_Surfaces;
+    bool m_D3D9Ex;
 };

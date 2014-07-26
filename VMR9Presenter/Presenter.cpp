@@ -4,7 +4,7 @@
 
 namespace
 {
-    #ifndef SAFE_RELEASE
+#ifndef SAFE_RELEASE
     template <class T>
     inline void SAFE_RELEASE(T*& p)
     {
@@ -14,14 +14,19 @@ namespace
             p = NULL;
         }
     }
-    #endif
+#endif
 }
 
-#define BREAK_FAIL(x) if (FAILED(hr = (x))) { break; }
+#define BREAK_FAIL(x)                                                                              \
+    if (FAILED(hr = (x)))                                                                          \
+    {                                                                                              \
+        break;                                                                                     \
+    }
 
-HRESULT VMR9CustomPresenter::CreateInstance(IUnknown *pUnkOuter, REFIID iid, void **ppv)
+HRESULT VMR9CustomPresenter::CreateInstance(IUnknown* pUnkOuter, REFIID iid, void** ppv)
 {
-    if (ppv == NULL) return E_POINTER;
+    if (ppv == NULL)
+        return E_POINTER;
 
     // This object does not support aggregation.
     if (pUnkOuter != NULL)
@@ -37,7 +42,7 @@ HRESULT VMR9CustomPresenter::CreateInstance(IUnknown *pUnkOuter, REFIID iid, voi
     {
         hr = E_OUTOFMEMORY;
     }
-    
+
     if (FAILED(hr))
     {
         SAFE_RELEASE(pObject);
@@ -80,7 +85,7 @@ VMR9CustomPresenter::~VMR9CustomPresenter()
 HRESULT VMR9CustomPresenter::InitializeD3D()
 {
     assert(m_pD3D9 == NULL);
-    typedef HRESULT (WINAPI *pfnDirect3DCreate9Ex)(UINT SDKVersion, IDirect3D9Ex**);
+    typedef HRESULT(WINAPI * pfnDirect3DCreate9Ex)(UINT SDKVersion, IDirect3D9Ex**);
 
     HRESULT hr = S_OK;
 
@@ -90,7 +95,8 @@ HRESULT VMR9CustomPresenter::InitializeD3D()
         return E_FAIL;
     }
 
-    pfnDirect3DCreate9Ex Direct3DCreate9Ex = (pfnDirect3DCreate9Ex) GetProcAddress(libHandle, "Direct3DCreate9Ex");
+    pfnDirect3DCreate9Ex Direct3DCreate9Ex =
+        (pfnDirect3DCreate9Ex)GetProcAddress(libHandle, "Direct3DCreate9Ex");
     if (Direct3DCreate9Ex != NULL)
     {
         IDirect3D9Ex* pD3D9Ex = NULL;
@@ -125,7 +131,8 @@ HRESULT VMR9CustomPresenter::CreateD3DDevice()
 
     if (!m_pD3D9)
     {
-        return E_FAIL;;
+        return E_FAIL;
+        ;
     }
 
     HRESULT hr = S_OK;
@@ -135,7 +142,7 @@ HRESULT VMR9CustomPresenter::CreateD3DDevice()
     {
         HWND hwnd = GetDesktopWindow();
 
-        D3DPRESENT_PARAMETERS pp = { 0 };
+        D3DPRESENT_PARAMETERS pp = {0};
 
         pp.BackBufferWidth = 1;
         pp.BackBufferHeight = 1;
@@ -166,16 +173,17 @@ HRESULT VMR9CustomPresenter::CreateD3DDevice()
             IDirect3DDevice9Ex* pDeviceEx = NULL;
 
             BREAK_FAIL(pD3D9Ex->CreateDeviceEx(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, pp.hDeviceWindow,
-                vp, &pp, NULL, &pDeviceEx));
+                                               vp, &pp, NULL, &pDeviceEx));
 
             SAFE_RELEASE(m_pDevice);
-            pDeviceEx->QueryInterface(__uuidof(IDirect3DDevice9), (void**) &m_pDevice);
+            pDeviceEx->QueryInterface(__uuidof(IDirect3DDevice9), (void**)&m_pDevice);
             SAFE_RELEASE(pDeviceEx);
         }
         else
         {
             IDirect3DDevice9* pDevice = NULL;
-            m_pD3D9->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, pp.hDeviceWindow, vp, &pp, &pDevice);
+            m_pD3D9->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, pp.hDeviceWindow, vp, &pp,
+                                  &pDevice);
 
             SAFE_RELEASE(m_pDevice);
             m_pDevice = pDevice;
@@ -191,11 +199,15 @@ HRESULT VMR9CustomPresenter::CreateD3DDevice()
     return hr;
 }
 
-HRESULT VMR9CustomPresenter::InitializeDevice(DWORD_PTR dwUserID, VMR9AllocationInfo* lpAllocInfo, DWORD* lpNumBuffers)
+HRESULT VMR9CustomPresenter::InitializeDevice(DWORD_PTR dwUserID, VMR9AllocationInfo* lpAllocInfo,
+                                              DWORD* lpNumBuffers)
 {
-    if (lpNumBuffers == NULL) return E_POINTER;
-    if (lpAllocInfo == NULL) return E_POINTER;
-    if (m_pSurfAllocNotify == NULL) return E_FAIL;
+    if (lpNumBuffers == NULL)
+        return E_POINTER;
+    if (lpAllocInfo == NULL)
+        return E_POINTER;
+    if (m_pSurfAllocNotify == NULL)
+        return E_FAIL;
 
     HRESULT hr = S_OK;
 
@@ -220,10 +232,13 @@ HRESULT VMR9CustomPresenter::TerminateDevice(DWORD_PTR dwID)
     return S_OK;
 }
 
-HRESULT VMR9CustomPresenter::GetSurface(DWORD_PTR dwUserID, DWORD SurfaceIndex, DWORD SurfaceFlags, IDirect3DSurface9** lplpSurface)
+HRESULT VMR9CustomPresenter::GetSurface(DWORD_PTR dwUserID, DWORD SurfaceIndex, DWORD SurfaceFlags,
+                                        IDirect3DSurface9** lplpSurface)
 {
-    if (lplpSurface == NULL) return E_POINTER;
-    if (SurfaceIndex >= m_Surfaces.size()) return E_FAIL;
+    if (lplpSurface == NULL)
+        return E_POINTER;
+    if (SurfaceIndex >= m_Surfaces.size())
+        return E_FAIL;
 
     AutoLock lock(m_ObjectLock);
 
@@ -235,7 +250,8 @@ HRESULT VMR9CustomPresenter::GetSurface(DWORD_PTR dwUserID, DWORD SurfaceIndex, 
 
 HRESULT VMR9CustomPresenter::AdviseNotify(IVMRSurfaceAllocatorNotify9* lpIVMRSurfAllocNotify)
 {
-    if (lpIVMRSurfAllocNotify == NULL) return E_POINTER;
+    if (lpIVMRSurfAllocNotify == NULL)
+        return E_POINTER;
 
     AutoLock lock(m_ObjectLock);
     m_pSurfAllocNotify = lpIVMRSurfAllocNotify;
@@ -250,10 +266,7 @@ HRESULT VMR9CustomPresenter::StartPresenting(DWORD_PTR dwUserID)
     return m_pDevice == NULL ? E_FAIL : S_OK;
 }
 
-HRESULT VMR9CustomPresenter::StopPresenting(DWORD_PTR dwUserID)
-{
-    return S_OK;
-}
+HRESULT VMR9CustomPresenter::StopPresenting(DWORD_PTR dwUserID) { return S_OK; }
 
 HRESULT VMR9CustomPresenter::PresentImage(DWORD_PTR dwUserID, VMR9PresentationInfo* lpPresInfo)
 {
@@ -272,7 +285,7 @@ HRESULT VMR9CustomPresenter::PresentImage(DWORD_PTR dwUserID, VMR9PresentationIn
     }
     else
     {
-        IDirect3DDevice9Ex* pDeviceEx = (IDirect3DDevice9Ex*) m_pDevice;
+        IDirect3DDevice9Ex* pDeviceEx = (IDirect3DDevice9Ex*)m_pDevice;
         HRESULT hr = pDeviceEx->CheckDeviceState(NULL);
         if (FAILED(hr))
         {
@@ -299,7 +312,8 @@ HRESULT VMR9CustomPresenter::RegisterCallback(IVMR9PresenterCallback* pCallback)
 
 HRESULT VMR9CustomPresenter::QueryInterface(REFIID riid, void** ppvObject)
 {
-    if (ppvObject == NULL) return E_POINTER;
+    if (ppvObject == NULL)
+        return E_POINTER;
 
     if (riid == IID_IVMRSurfaceAllocator9)
     {
@@ -327,10 +341,7 @@ HRESULT VMR9CustomPresenter::QueryInterface(REFIID riid, void** ppvObject)
     return S_OK;
 }
 
-ULONG VMR9CustomPresenter::AddRef()
-{
-    return _InterlockedIncrement(&m_RefCount);
-}
+ULONG VMR9CustomPresenter::AddRef() { return _InterlockedIncrement(&m_RefCount); }
 
 ULONG VMR9CustomPresenter::Release()
 {

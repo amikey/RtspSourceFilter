@@ -12,14 +12,14 @@
  * In order to add support for new media format (f.e. HEVC) one needs to:
  * - appropriately modify function IsSubsessionSupported()
  * - based on given MediaSubsession initialize CMediaType (check GetMediaType{codec}() functions)
- *   and use it to RtspSourcePin::InitializeMediaType
+ * and use it to RtspSourcePin::InitializeMediaType
  * - Modify RtspSourcePin::FilBuffer if needed
  */
 
-#ifdef DEBUG 
-#  define RTSP_CLIENT_VERBOSITY_LEVEL 1
+#ifdef DEBUG
+#define RTSP_CLIENT_VERBOSITY_LEVEL 1
 #else
-#  define RTSP_CLIENT_VERBOSITY_LEVEL 0
+#define RTSP_CLIENT_VERBOSITY_LEVEL 0
 #endif
 
 namespace
@@ -28,8 +28,8 @@ namespace
     const int RtspClientVerbosityLevel = RTSP_CLIENT_VERBOSITY_LEVEL;
     const uint32_t defaultLatencyMSecs = 500;
     const int recvBufferVideo = 256 * 1024; // 256KB - H.264 IDR frames can be really big
-    const int recvBufferAudio = 4096; // 4KB
-    const int recvBufferText = 2048; // Should be more than enough
+    const int recvBufferAudio = 4096;       // 4KB
+    const int recvBufferText = 2048;        // Should be more than enough
     const unsigned int packetReorderingThresholdTime = 200 * 1000; // 200 ms
     const int interPacketGapMaxTime = 2000; // 2000 msec - but effectively it's atleast twice that
     const Boolean forceMulticastOnUnspecified = False;
@@ -42,20 +42,23 @@ namespace
 class RtspClient : public ::RTSPClient
 {
 public:
-    static RtspClient* CreateRtspClient(RtspSourceFilter* filter,
-        UsageEnvironment& env, char const* rtspUrl,
-        int verbosityLevel = 0, char const* applicationName = nullptr,
-        portNumBits tunnelOverHttpPortNum = 0)
+    static RtspClient* CreateRtspClient(RtspSourceFilter* filter, UsageEnvironment& env,
+                                        char const* rtspUrl, int verbosityLevel = 0,
+                                        char const* applicationName = nullptr,
+                                        portNumBits tunnelOverHttpPortNum = 0)
     {
-        return new (std::nothrow) RtspClient(filter, env, rtspUrl, verbosityLevel,
-            applicationName, tunnelOverHttpPortNum);
+        return new (std::nothrow) RtspClient(filter, env, rtspUrl, verbosityLevel, applicationName,
+                                             tunnelOverHttpPortNum);
     }
 
 protected:
     RtspClient(RtspSourceFilter* filter, UsageEnvironment& env, char const* rtspUrl,
-        int verbosityLevel, char const* applicationName, portNumBits tunnelOverHttpPortNum)
+               int verbosityLevel, char const* applicationName, portNumBits tunnelOverHttpPortNum)
         : ::RTSPClient(env, rtspUrl, verbosityLevel, applicationName, tunnelOverHttpPortNum, -1)
-        , filter(filter), mediaSession(nullptr), subsession(nullptr), iter(nullptr)
+        , filter(filter)
+        , mediaSession(nullptr)
+        , subsession(nullptr)
+        , iter(nullptr)
     {
     }
 
@@ -96,14 +99,25 @@ CUnknown* WINAPI RtspSourceFilter::CreateInstance(LPUNKNOWN lpunk, HRESULT* phr)
 
 RtspSourceFilter::RtspSourceFilter(IUnknown* pUnk, HRESULT* phr)
     : CSource(NAME("RtspSourceFilter"), pUnk, CLSID_RtspSourceFilter)
-    , _streamOverTcp(false), _tunnelOverHttpPort(0U), _autoReconnectionMSecs(0)
-    , _latencyMSecs(defaultLatencyMSecs), _state(State::Initial)
+    , _streamOverTcp(false)
+    , _tunnelOverHttpPort(0U)
+    , _autoReconnectionMSecs(0)
+    , _latencyMSecs(defaultLatencyMSecs)
+    , _state(State::Initial)
     , _scheduler(BasicTaskScheduler::createNew())
-    , _env(MyUsageEnvironment::createNew(*_scheduler)), _totNumPacketsReceived(0)
-    , _interPacketGapCheckTimerTask(nullptr), _reconnectionTimerTask(nullptr)
-    , _firstCallTimeoutTask(nullptr), _livenessCommandTask(nullptr)
-    , _sessionTimerTask(nullptr), _sessionTimeout(60), _rtsp(nullptr)
-    , _numSubsessions(0), _sessionDuration(0), _initialSeekTime(0), _endTime(0)
+    , _env(MyUsageEnvironment::createNew(*_scheduler))
+    , _totNumPacketsReceived(0)
+    , _interPacketGapCheckTimerTask(nullptr)
+    , _reconnectionTimerTask(nullptr)
+    , _firstCallTimeoutTask(nullptr)
+    , _livenessCommandTask(nullptr)
+    , _sessionTimerTask(nullptr)
+    , _sessionTimeout(60)
+    , _rtsp(nullptr)
+    , _numSubsessions(0)
+    , _sessionDuration(0)
+    , _initialSeekTime(0)
+    , _endTime(0)
     , _workerThread(&RtspSourceFilter::WorkerThread, this)
 {
 }
@@ -129,7 +143,7 @@ HRESULT RtspSourceFilter::GetCurFile(LPOLESTR* outFileName, AM_MEDIA_TYPE* outMe
 {
     CheckPointer(outFileName, E_POINTER);
     *outFileName = nullptr;
-    
+
     if (_rtspUrl.length() > 0)
     {
         _rtspUrl.c_str();
@@ -151,7 +165,8 @@ HRESULT RtspSourceFilter::GetCurFile(LPOLESTR* outFileName, AM_MEDIA_TYPE* outMe
         delete[] pFileName;
     }
     // Ignore any request for media type - which one should we return anyway?
-    if (outMediaType) outMediaType = nullptr;
+    if (outMediaType)
+        outMediaType = nullptr;
 
     return S_OK;
 }
@@ -164,10 +179,11 @@ HRESULT RtspSourceFilter::Load(LPCOLESTR inFileName, const AM_MEDIA_TYPE* inMedi
     // Convert OLE string to std one
     size_t converted;
     errno_t err = wcstombs_s(&converted, nullptr, 0, inFileName, 0);
-    if (err || converted == 0) return E_FAIL;
+    if (err || converted == 0)
+        return E_FAIL;
     _rtspUrl.resize(converted);
-    wcstombs_s(&converted, const_cast<char*>(_rtspUrl.data()),
-        _rtspUrl.size(), inFileName, _TRUNCATE);
+    wcstombs_s(&converted, const_cast<char*>(_rtspUrl.data()), _rtspUrl.size(), inFileName,
+               _TRUNCATE);
     // Request new URL asynchronously but wait since we need a response now
     RtspAsyncResult result = AsyncOpenUrl(_rtspUrl);
     RtspResult ec = result.get();
@@ -202,9 +218,12 @@ namespace
     {
         switch (fs)
         {
-        case State_Stopped: return "Stopped";
-        case State_Paused: return "Paused";
-        case State_Running: return "Running";
+        case State_Stopped:
+            return "Stopped";
+        case State_Paused:
+            return "Paused";
+        case State_Running:
+            return "Running";
         }
         return "";
     }
@@ -237,14 +256,14 @@ HRESULT RtspSourceFilter::Pause()
 
 HRESULT RtspSourceFilter::Run(REFERENCE_TIME tStart)
 {
-    DebugLog("%s\n", __FUNCTION__); 
+    DebugLog("%s\n", __FUNCTION__);
 
     // Need to reopen the session if we teardowned previous one
     if (_state == State::Initial)
     {
         // NOTE: We query internal state of a worker thread from different thread thus
         // this is only valid if we assume it's called as a first Run()
-        // or it is called after Stop(). Both assumptions are respected if 
+        // or it is called after Stop(). Both assumptions are respected if
         // we call DirectShow from single thread.
         RtspAsyncResult result = AsyncOpenUrl(_rtspUrl);
         RtspResult ec = result.get();
@@ -292,7 +311,7 @@ void RtspSourceFilter::SetAutoReconnectionPeriod(DWORD dwMSecs)
 void RtspSourceFilter::SetLatency(DWORD dwMSecs)
 {
     // Valid call only until first RTP packet arrival or after Stop/Run
-    // This value is only used for first packet synchronization 
+    // This value is only used for first packet synchronization
     // - either it's first RTCP synced or just the very first packet
     _latencyMSecs = dwMSecs;
 }
@@ -317,7 +336,7 @@ RtspAsyncResult RtspSourceFilter::AsyncReconnect()
     return MakeRequest(RtspAsyncRequest::Reconnect, "");
 }
 
-RtspAsyncResult RtspSourceFilter::MakeRequest(RtspAsyncRequest::Type request, 
+RtspAsyncResult RtspSourceFilter::MakeRequest(RtspAsyncRequest::Type request,
                                               const std::string& requestData)
 {
     /// TODO: Check if worker thread is alive
@@ -330,21 +349,22 @@ RtspAsyncResult RtspSourceFilter::MakeRequest(RtspAsyncRequest::Type request,
 void RtspSourceFilter::OpenUrl(const std::string& url)
 {
     // Should never fail (only when out of memory)
-    _rtsp = RtspClient::CreateRtspClient(this, *_env, url.c_str(),
-        RtspClientVerbosityLevel, RtspClientAppName, _tunnelOverHttpPort);
+    _rtsp = RtspClient::CreateRtspClient(this, *_env, url.c_str(), RtspClientVerbosityLevel,
+                                         RtspClientAppName, _tunnelOverHttpPort);
     if (!_rtsp)
     {
         _currentRequest.SetValue(error::ClientCreateFailed);
         _state = State::Initial;
         return;
     }
-    _firstCallTimeoutTask = _scheduler->scheduleDelayedTask(firstCallTimeoutTime*1000,
-        RtspSourceFilter::DescribeRequestTimeout, this);
+    _firstCallTimeoutTask = _scheduler->scheduleDelayedTask(
+        firstCallTimeoutTime * 1000, RtspSourceFilter::DescribeRequestTimeout, this);
     // Returns only CSeq number
     _rtsp->sendDescribeCommand(HandleDescribeResponse, &_authenticator);
 }
 
-void RtspSourceFilter::HandleDescribeResponse(RTSPClient* client, int resultCode, char* resultString)
+void RtspSourceFilter::HandleDescribeResponse(RTSPClient* client, int resultCode,
+                                              char* resultString)
 {
     RtspClient* myClient = static_cast<RtspClient*>(client);
     myClient->filter->HandleDescribeResponse(resultCode, resultString);
@@ -361,7 +381,8 @@ void RtspSourceFilter::HandleDescribeResponse(int resultCode, char* resultString
         delete[] resultString;
 
         CloseClient(); // No session to close yet
-        if (ScheduleNextReconnect()) return;
+        if (ScheduleNextReconnect())
+            return;
 
         // Couldn't connect to the server
         if (resultCode == -WSAENOTCONN)
@@ -383,7 +404,8 @@ void RtspSourceFilter::HandleDescribeResponse(int resultCode, char* resultString
     if (!mediaSession) // SDP is invalid or out of memory
     {
         CloseClient(); // No session to close to yet
-        if (ScheduleNextReconnect()) return;
+        if (ScheduleNextReconnect())
+            return;
 
         _currentRequest.SetValue(error::SdpInvalid);
         _state = State::Initial;
@@ -399,7 +421,8 @@ void RtspSourceFilter::HandleDescribeResponse(int resultCode, char* resultString
 
         // Close client
         CloseClient();
-        if (ScheduleNextReconnect()) return;
+        if (ScheduleNextReconnect())
+            return;
 
         _currentRequest.SetValue(error::NoSubsessions);
         _state = State::Initial;
@@ -453,8 +476,8 @@ void RtspSourceFilter::SetupSubsession()
                 ::increaseReceiveBufferTo(*_env, rtpSource->RTPgs()->socketNum(), recvBuffer);
         }
 
-        _rtsp->sendSetupCommand(*subsession, HandleSetupResponse, False,
-            _streamOverTcp, forceMulticastOnUnspecified && !_streamOverTcp, &_authenticator);
+        _rtsp->sendSetupCommand(*subsession, HandleSetupResponse, False, _streamOverTcp,
+                                forceMulticastOnUnspecified && !_streamOverTcp, &_authenticator);
         return;
     }
 
@@ -462,13 +485,15 @@ void RtspSourceFilter::SetupSubsession()
     delete _rtsp->iter;
     _rtsp->iter = nullptr;
 
-    // How many subsession we set up? If none then something is wrong and we shouldn't proceed further
+    // How many subsession we set up? If none then something is wrong and we shouldn't proceed
+    // further
     if (_numSubsessions == 0)
     {
         CloseSession();
         CloseClient();
 
-        if (ScheduleNextReconnect()) return;
+        if (ScheduleNextReconnect())
+            return;
 
         _state = State::Initial;
         _currentRequest.SetValue(error::NoSubsessionsSetup);
@@ -505,7 +530,8 @@ void RtspSourceFilter::HandleSetupResponse(int resultCode, char* resultString)
         if (!strcmp(subsession->mediumName(), "video"))
         {
             HRESULT hr;
-            subsession->sink = new ProxyMediaSink(*_env, *subsession, _videoMediaQueue, recvBufferVideo);
+            subsession->sink =
+                new ProxyMediaSink(*_env, *subsession, _videoMediaQueue, recvBufferVideo);
             if (!_videoPin)
                 _videoPin.reset(new RtspSourcePin(&hr, this, subsession, _videoMediaQueue));
             else
@@ -514,7 +540,8 @@ void RtspSourceFilter::HandleSetupResponse(int resultCode, char* resultString)
         else if (!strcmp(subsession->mediumName(), "audio"))
         {
             HRESULT hr;
-            subsession->sink = new ProxyMediaSink(*_env, *subsession, _audioMediaQueue, recvBufferAudio);
+            subsession->sink =
+                new ProxyMediaSink(*_env, *subsession, _audioMediaQueue, recvBufferAudio);
             if (!_audioPin)
                 _audioPin.reset(new RtspSourcePin(&hr, this, subsession, _audioMediaQueue));
             else
@@ -531,7 +558,8 @@ void RtspSourceFilter::HandleSetupResponse(int resultCode, char* resultString)
         }
 
         subsession->miscPtr = _rtsp;
-        subsession->sink->startPlaying(*(subsession->readSource()), HandleSubsessionFinished, subsession);
+        subsession->sink->startPlaying(*(subsession->readSource()), HandleSubsessionFinished,
+                                       subsession);
 
         // Set a handler to be called if a RTCP "BYE" arrives for this subsession
         if (subsession->rtcpInstance() != nullptr)
@@ -544,7 +572,7 @@ void RtspSourceFilter::HandleSetupResponse(int resultCode, char* resultString)
         (*_env) << "SETUP failed, server response: " << resultString;
         delete[] resultString;
     }
-    
+
     SetupSubsession();
 }
 
@@ -558,20 +586,20 @@ void RtspSourceFilter::Play()
     _sessionDuration = std::max(0.0, _sessionDuration);
 
     // For duration equal to 0 we got live stream with no end time (-1)
-    _endTime = _sessionDuration > 0.0 ? _initialSeekTime + _sessionDuration : - 1.0;
+    _endTime = _sessionDuration > 0.0 ? _initialSeekTime + _sessionDuration : -1.0;
 
     const char* absStartTime = mediaSession.absStartTime();
     if (absStartTime != nullptr)
     {
         // Either we or the server have specified that seeking should be done by 'absolute' time:
-        _rtsp->sendPlayCommand(mediaSession, HandlePlayResponse, absStartTime, mediaSession.absEndTime(),
-            scale, &_authenticator);
+        _rtsp->sendPlayCommand(mediaSession, HandlePlayResponse, absStartTime,
+                               mediaSession.absEndTime(), scale, &_authenticator);
     }
     else
     {
         // Normal case: Seek by relative time (NPT):
-        _rtsp->sendPlayCommand(mediaSession, HandlePlayResponse, _initialSeekTime, _endTime,
-            scale, &_authenticator);
+        _rtsp->sendPlayCommand(mediaSession, HandlePlayResponse, _initialSeekTime, _endTime, scale,
+                               &_authenticator);
     }
 }
 
@@ -588,25 +616,26 @@ void RtspSourceFilter::HandlePlayResponse(int resultCode, char* resultString)
         _currentRequest.SetValue(error::Success);
         // State is already Playing
         _totNumPacketsReceived = 0;
-        _sessionTimeout = _rtsp->sessionTimeoutParameter() != 0
-            ? _rtsp->sessionTimeoutParameter() : 60;
+        _sessionTimeout =
+            _rtsp->sessionTimeoutParameter() != 0 ? _rtsp->sessionTimeoutParameter() : 60;
 
         // Create timerTask for disconnection recognition
-        _interPacketGapCheckTimerTask = _scheduler->scheduleDelayedTask(interPacketGapMaxTime*1000, 
-            &RtspSourceFilter::CheckInterPacketGaps, this);
+        _interPacketGapCheckTimerTask = _scheduler->scheduleDelayedTask(
+            interPacketGapMaxTime * 1000, &RtspSourceFilter::CheckInterPacketGaps, this);
         // Create timerTask for session keep-alive (use OPTIONS request to sustain session)
-        _livenessCommandTask = _scheduler->scheduleDelayedTask(_sessionTimeout/3*1000000, 
-            &RtspSourceFilter::SendLivenessCommand, this);
+        _livenessCommandTask = _scheduler->scheduleDelayedTask(
+            _sessionTimeout / 3 * 1000000, &RtspSourceFilter::SendLivenessCommand, this);
 
         if (_sessionDuration > 0)
         {
-            double rangeAdjustment = (_rtsp->mediaSession->playEndTime() - 
-                _rtsp->mediaSession->playStartTime()) - (_endTime - _initialSeekTime);
+            double rangeAdjustment =
+                (_rtsp->mediaSession->playEndTime() - _rtsp->mediaSession->playStartTime()) -
+                (_endTime - _initialSeekTime);
             if (_sessionDuration + rangeAdjustment > 0.0)
                 _sessionDuration += rangeAdjustment;
-            int64_t uSecsToDelay = (int64_t)(_sessionDuration*1000000.0);
-            _sessionTimerTask = _scheduler->scheduleDelayedTask(uSecsToDelay, 
-                &RtspSourceFilter::HandleMediaEnded, this);
+            int64_t uSecsToDelay = (int64_t)(_sessionDuration * 1000000.0);
+            _sessionTimerTask = _scheduler->scheduleDelayedTask(
+                uSecsToDelay, &RtspSourceFilter::HandleMediaEnded, this);
         }
     }
     else
@@ -617,8 +646,8 @@ void RtspSourceFilter::HandlePlayResponse(int resultCode, char* resultString)
 
         if (_autoReconnectionMSecs > 0)
         {
-            _reconnectionTimerTask = _scheduler->scheduleDelayedTask(_autoReconnectionMSecs*1000, 
-                &RtspSourceFilter::Reconnect, this);
+            _reconnectionTimerTask = _scheduler->scheduleDelayedTask(
+                _autoReconnectionMSecs * 1000, &RtspSourceFilter::Reconnect, this);
             _state = State::Reconnecting;
             _currentRequest.SetValue(error::PlayFailed);
         }
@@ -639,7 +668,8 @@ void RtspSourceFilter::HandlePlayResponse(int resultCode, char* resultString)
 
 void RtspSourceFilter::CloseSession()
 {
-    if (!_rtsp) return; // sane check
+    if (!_rtsp)
+        return; // sane check
     MediaSession* mediaSession = _rtsp->mediaSession;
     if (mediaSession != nullptr)
     {
@@ -731,8 +761,8 @@ bool RtspSourceFilter::ScheduleNextReconnect()
 {
     if (_state == State::Reconnecting)
     {
-        _reconnectionTimerTask = _scheduler->scheduleDelayedTask(_autoReconnectionMSecs*1000, 
-            &RtspSourceFilter::Reconnect, this);
+        _reconnectionTimerTask = _scheduler->scheduleDelayedTask(
+            _autoReconnectionMSecs * 1000, &RtspSourceFilter::Reconnect, this);
         // state is still Reconnecting
         _currentRequest.SetValue(error::ReconnectFailed);
         return true;
@@ -753,15 +783,15 @@ void RtspSourceFilter::DescribeRequestTimeout(void* clientData)
 
 void RtspSourceFilter::DescribeRequestTimeout()
 {
-    _ASSERT(_state == State::SettingUp || 
-            _state == State::Reconnecting);
+    _ASSERT(_state == State::SettingUp || _state == State::Reconnecting);
     _firstCallTimeoutTask = nullptr;
 
     if (_reconnectionTimerTask != nullptr)
         _scheduler->unscheduleDelayedTask(_reconnectionTimerTask);
 
     CloseClient(); // No session to close yet
-    if (ScheduleNextReconnect()) return;
+    if (ScheduleNextReconnect())
+        return;
 
     _state = State::Initial;
     _currentRequest.SetValue(error::ServerNotReachable);
@@ -785,7 +815,7 @@ void RtspSourceFilter::CheckInterPacketGaps()
 
     // Aliases
     UsageEnvironment& env = *_env;
-    MediaSession& mediaSession = *_rtsp->mediaSession;    
+    MediaSession& mediaSession = *_rtsp->mediaSession;
 
     // Check each subsession, counting up how many packets have been received
     MediaSubsessionIterator iter(mediaSession);
@@ -794,11 +824,12 @@ void RtspSourceFilter::CheckInterPacketGaps()
     while ((subsession = iter.next()) != nullptr)
     {
         RTPSource* src = subsession->rtpSource();
-        if (src == nullptr) continue;
+        if (src == nullptr)
+            continue;
         newTotNumPacketsReceived += src->receptionStatsDB().totNumPacketsReceived();
     }
-    DebugLog("Total number of packets received: %u, queued packets: %u|%u\n", newTotNumPacketsReceived, 
-        _videoMediaQueue.size(), _audioMediaQueue.size());
+    DebugLog("Total number of packets received: %u, queued packets: %u|%u\n",
+             newTotNumPacketsReceived, _videoMediaQueue.size(), _audioMediaQueue.size());
     // No additional packets have been received since the last time we checked
     if (newTotNumPacketsReceived == _totNumPacketsReceived)
     {
@@ -809,7 +840,8 @@ void RtspSourceFilter::CheckInterPacketGaps()
         if (_sessionTimerTask != nullptr)
             _scheduler->unscheduleDelayedTask(_sessionTimerTask);
 
-        // If auto reconnect is off - notify pins to stop waiting for packets that most probably won't come
+        // If auto reconnect is off - notify pins to stop waiting for packets that most probably
+        // won't come
         if (_autoReconnectionMSecs == 0)
         {
             _videoMediaQueue.push(MediaPacketSample());
@@ -826,7 +858,7 @@ void RtspSourceFilter::CheckInterPacketGaps()
                 if (_videoPin)
                 {
                     currentPlayTime = _videoPin->CurrentPlayTime();
-                    // Get minimum of two NPT 
+                    // Get minimum of two NPT
                     if (_audioPin)
                         currentPlayTime = std::min(currentPlayTime, _audioPin->CurrentPlayTime());
                 }
@@ -839,20 +871,22 @@ void RtspSourceFilter::CheckInterPacketGaps()
             }
 
             // Notify pin to desynchronize
-            if (_videoPin) _videoPin->ResetTimeBaselines();
-            if (_audioPin) _audioPin->ResetTimeBaselines();
+            if (_videoPin)
+                _videoPin->ResetTimeBaselines();
+            if (_audioPin)
+                _audioPin->ResetTimeBaselines();
 
             // Finally schedule reconnect task
-            _reconnectionTimerTask = _scheduler->scheduleDelayedTask(_autoReconnectionMSecs*1000,
-                &RtspSourceFilter::Reconnect, this);
+            _reconnectionTimerTask = _scheduler->scheduleDelayedTask(
+                _autoReconnectionMSecs * 1000, &RtspSourceFilter::Reconnect, this);
         }
     }
     else
     {
         _totNumPacketsReceived = newTotNumPacketsReceived;
         // Schedule next inspection
-        _interPacketGapCheckTimerTask = _scheduler->scheduleDelayedTask(interPacketGapMaxTime*1000, 
-            &RtspSourceFilter::CheckInterPacketGaps, this);
+        _interPacketGapCheckTimerTask = _scheduler->scheduleDelayedTask(
+            interPacketGapMaxTime * 1000, &RtspSourceFilter::CheckInterPacketGaps, this);
     }
 }
 
@@ -873,7 +907,8 @@ void RtspSourceFilter::SendLivenessCommand(void* clientData)
 
 void RtspSourceFilter::HandleOptionsResponse(RTSPClient* client, int resultCode, char* resultString)
 {
-    // If something bad happens between OPTIONS request and response, response handler shouldn't be call
+    // If something bad happens between OPTIONS request and response, response handler shouldn't be
+    // call
     RtspClient* myClient = static_cast<RtspClient*>(client);
     myClient->filter->HandleOptionsResponse(resultCode, resultString);
 }
@@ -888,8 +923,8 @@ void RtspSourceFilter::HandleOptionsResponse(int resultCode, char* resultString)
     if (resultCode == 0)
     {
         // Schedule next keep-alive request if there wasn't any error along the way
-        _livenessCommandTask = _scheduler->scheduleDelayedTask(_sessionTimeout/3*1000000,
-            &RtspSourceFilter::SendLivenessCommand, this);
+        _livenessCommandTask = _scheduler->scheduleDelayedTask(
+            _sessionTimeout / 3 * 1000000, &RtspSourceFilter::SendLivenessCommand, this);
     }
 }
 
@@ -915,7 +950,7 @@ void RtspSourceFilter::Reconnect()
 }
 
 /*
- * Task:_sessionTimerTask 
+ * Task:_sessionTimerTask
  * Perform shutdown when media come to end (for VOD)
  * Viable only in Playing state.
  */
@@ -934,19 +969,24 @@ void RtspSourceFilter::WorkerThread()
     bool done = false;
 
     // Uses internals of RtspSourceFilter
-    auto GetRtspSourceStateString = 
-        [](State state)
+    auto GetRtspSourceStateString = [](State state)
+    {
+        switch (state)
         {
-            switch (state)
-            {
-            case State::Initial: return "Initial";
-            case State::SettingUp: return "SettingUp";
-            case State::ReadyToPlay: return "ReadyToPlay";
-            case State::Playing: return "Playing";
-            case State::Reconnecting: return "Reconnecting";
-            default: return "Unknown";
-            }
-        };
+        case State::Initial:
+            return "Initial";
+        case State::SettingUp:
+            return "SettingUp";
+        case State::ReadyToPlay:
+            return "ReadyToPlay";
+        case State::Playing:
+            return "Playing";
+        case State::Reconnecting:
+            return "Reconnecting";
+        default:
+            return "Unknown";
+        }
+    };
 
     while (!done)
     {
@@ -966,8 +1006,7 @@ void RtspSourceFilter::WorkerThread()
             continue;
         }
 
-        DebugLog("[WorkerThread] -  State: %s, Request: %s]\n",
-                 GetRtspSourceStateString(_state),
+        DebugLog("[WorkerThread] -  State: %s, Request: %s]\n", GetRtspSourceStateString(_state),
                  GetRtspAsyncRequestTypeString(req.GetRequest()));
 
         // Process requests
@@ -992,7 +1031,8 @@ void RtspSourceFilter::WorkerThread()
             case RtspAsyncRequest::Stop:
                 // Needed if filter is re-started and fails to start running for some reason
                 // and also output pins threads are already started and waiting for packets.
-                // This is because Pause() is called before Run() which can fail if filter is restarted
+                // This is because Pause() is called before Run() which can fail if filter is
+                // restarted
                 _videoMediaQueue.push(MediaPacketSample());
                 _audioMediaQueue.push(MediaPacketSample());
                 req.SetValue(error::Success);
@@ -1115,7 +1155,7 @@ namespace
     bool IsSubsessionSupported(MediaSubsession& mediaSubsession)
     {
         if (!strcmp(mediaSubsession.mediumName(), "video"))
-        {     
+        {
             if (!strcmp(mediaSubsession.codecName(), "H264"))
             {
                 return true;
@@ -1124,14 +1164,14 @@ namespace
         else if (!strcmp(mediaSubsession.mediumName(), "audio"))
         {
             if (!strcmp(mediaSubsession.codecName(), "MPEG4-GENERIC"))
-            {        
+            {
                 return true;
             }
             else if (!strcmp(mediaSubsession.codecName(), "AC3"))
             {
                 return false;
                 // TODO: Not completed
-                //return true;
+                // return true;
             }
         }
 
@@ -1140,7 +1180,7 @@ namespace
 
     const DWORD MS_VC_EXCEPTION = 0x406D1388;
 
-#pragma pack(push,8)
+#pragma pack(push, 8)
     typedef struct tagTHREADNAME_INFO
     {
         DWORD dwType;     // Must be 0x1000.
@@ -1152,14 +1192,12 @@ namespace
 
     void SetThreadName(DWORD dwThreadID, char* threadName)
     {
-        THREADNAME_INFO info = { 0x1000, threadName, dwThreadID, 0 };
+        THREADNAME_INFO info = {0x1000, threadName, dwThreadID, 0};
 
         __try
         {
             RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)&info);
         }
-        __except (EXCEPTION_EXECUTE_HANDLER)
-        {
-        }
+        __except(EXCEPTION_EXECUTE_HANDLER) {}
     }
 }

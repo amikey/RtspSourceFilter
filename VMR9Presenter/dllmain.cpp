@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////
 //
 // dllmain.cpp : Implements DLL exports and COM class factory
-// 
+//
 // THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 // ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO
 // THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A
@@ -33,12 +33,13 @@
 
 using namespace MediaFoundationSamples;
 
-HMODULE g_hModule;                  // DLL module handle
+HMODULE g_hModule; // DLL module handle
 
-DEFINE_CLASSFACTORY_SERVER_LOCK;    // Defines the static member variable for the class factory lock.
+DEFINE_CLASSFACTORY_SERVER_LOCK; // Defines the static member variable for the
+                                 // class factory lock.
 
 // Friendly name for COM registration.
-WCHAR* g_sFriendlyName =  L"VMR9 Custom Presenter";
+WCHAR* g_sFriendlyName = L"VMR9 Custom Presenter";
 
 // g_ClassFactories: Array of class factory data.
 // Defines a look-up table of CLSIDs and corresponding creation functions.
@@ -51,10 +52,7 @@ ClassFactoryData g_ClassFactories[] =
 const DWORD g_numClassFactories = sizeof(g_ClassFactories) / sizeof(g_ClassFactories[0]);
 
 // DllMain: Entry-point for the DLL.
-BOOL APIENTRY DllMain( HANDLE hModule, 
-                       DWORD  ul_reason_for_call, 
-                       LPVOID lpReserved
-                     )
+BOOL APIENTRY DllMain(HANDLE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
     switch (ul_reason_for_call)
     {
@@ -86,11 +84,10 @@ STDAPI DllCanUnloadNow()
     }
 }
 
-
 STDAPI DllRegisterServer()
 {
     HRESULT hr;
-    
+
     // Register the MFT's CLSID as a COM object.
     hr = RegisterObject(g_hModule, CLSID_CustomVMR9Presenter, g_sFriendlyName, TEXT("Both"));
 
@@ -107,7 +104,7 @@ STDAPI DllUnregisterServer()
 
 STDAPI DllGetClassObject(REFCLSID clsid, REFIID riid, void** ppv)
 {
-    ClassFactory *pFactory = NULL;
+    ClassFactory* pFactory = NULL;
 
     HRESULT hr = CLASS_E_CLASSNOTAVAILABLE; // Default to failure
 
@@ -142,5 +139,3 @@ STDAPI DllGetClassObject(REFCLSID clsid, REFIID riid, void** ppv)
 
     return hr;
 }
-
-

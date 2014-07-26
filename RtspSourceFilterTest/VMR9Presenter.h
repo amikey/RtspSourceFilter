@@ -11,17 +11,17 @@ static const GUID CLSID_CustomVMR9Presenter =
 MIDL_INTERFACE("6C9EF7BD-2436-44B7-8407-84352BC29937")
 IVMR9PresenterCallback : public IUnknown
 {
-    STDMETHOD(PresentSurfaceCB)(IDirect3DSurface9 *pSurface) = 0;
+    STDMETHOD(PresentSurfaceCB)(IDirect3DSurface9* pSurface) = 0;
 };
 
 MIDL_INTERFACE("AFCDB40E-CFE7-4F77-9222-21D9303187CB")
-IVMR9PresenterRegisterCallback : public IUnknown
+IVMR9PresenterRegisterCallback: public IUnknown
 {
     STDMETHOD(RegisterCallback)(IVMR9PresenterCallback* pCallback) = 0;
 };
 
-class __declspec(uuid("1F240F2B-2D62-4BA1-8D6C-8DD19B6A220F"))
-VMR9Presenter: public IVMR9PresenterCallback
+class __declspec(uuid("1F240F2B-2D62-4BA1-8D6C-8DD19B6A220F")) VMR9Presenter
+    : public IVMR9PresenterCallback
 {
 public:
     VMR9Presenter() : _surface(nullptr), _refCount(1) {}
@@ -42,7 +42,8 @@ public:
 
     virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** pvObject)
     {
-        if (pvObject == NULL) return E_POINTER;
+        if (pvObject == NULL)
+            return E_POINTER;
 
         if (riid == __uuidof(IVMR9PresenterCallback))
         {
@@ -70,7 +71,8 @@ public:
     virtual ULONG STDMETHODCALLTYPE Release(void)
     {
         long ref = _InterlockedDecrement(&_refCount);
-        if (ref == 0) delete this;
+        if (ref == 0)
+            delete this;
         return ref;
     }
 

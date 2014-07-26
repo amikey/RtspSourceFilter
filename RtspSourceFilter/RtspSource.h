@@ -130,7 +130,10 @@ private:
     };
     State _state;
 
-    struct env_deleter { void operator()(MyUsageEnvironment* ptr) const { ptr->reclaim(); } };
+    struct env_deleter
+    {
+        void operator()(MyUsageEnvironment* ptr) const { ptr->reclaim(); }
+    };
     std::unique_ptr<BasicTaskScheduler0> _scheduler;
     std::unique_ptr<MyUsageEnvironment, env_deleter> _env;
 
@@ -160,9 +163,8 @@ private:
 class RtspSourcePin : public CSourceStream
 {
 public:
-    RtspSourcePin(HRESULT* phr, CSource* pFilter, 
-        MediaSubsession* mediaSubsession, 
-        MediaPacketQueue& mediaPacketQueue);
+    RtspSourcePin(HRESULT* phr, CSource* pFilter, MediaSubsession* mediaSubsession,
+                  MediaPacketQueue& mediaPacketQueue);
     virtual ~RtspSourcePin();
 
     HRESULT DecideBufferSize(IMemAllocator* pAlloc, ALLOCATOR_PROPERTIES* pRequest) override;
@@ -177,7 +179,9 @@ public:
     REFERENCE_TIME CurrentPlayTime() const { return _currentPlayTime; }
 
     void ResetMediaSubsession(MediaSubsession* mediaSubsession)
-    { /* No thread-safe! */ _mediaSubsession = mediaSubsession; }
+    { /* No thread-safe! */
+        _mediaSubsession = mediaSubsession;
+    }
 
 protected:
     HRESULT OnThreadCreate() override;

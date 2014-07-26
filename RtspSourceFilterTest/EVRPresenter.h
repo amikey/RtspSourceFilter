@@ -14,18 +14,18 @@ MIDL_INTERFACE("576DCFD9-3C6B-4317-A635-2A1494E08B75")
 IEVRPresenterCallback : public IUnknown
 {
 public:
-    STDMETHOD(PresentSurfaceCB)(IDirect3DSurface9 *pSurface) = 0;
+    STDMETHOD(PresentSurfaceCB)(IDirect3DSurface9* pSurface) = 0;
 };
 
 MIDL_INTERFACE("F3AB6A07-5A21-4034-908A-A9F48FAC2F63")
 IEVRPresenterRegisterCallback : public IUnknown
 {
 public:
-    STDMETHOD(RegisterCallback)(IEVRPresenterCallback *pCallback) = 0;
+    STDMETHOD(RegisterCallback)(IEVRPresenterCallback* pCallback) = 0;
 };
 
-class __declspec(uuid("805D43FB-B9FF-4A1D-B4FD-B65B1DCD486C"))
-EVRPresenter : public IEVRPresenterCallback
+class __declspec(uuid("805D43FB-B9FF-4A1D-B4FD-B65B1DCD486C")) EVRPresenter
+    : public IEVRPresenterCallback
 {
 public:
     EVRPresenter() : _surface(nullptr), _refCount(1) {}
@@ -46,12 +46,12 @@ public:
 
     virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** pvObject)
     {
-        if (pvObject == NULL) return E_POINTER;
+        if (pvObject == NULL)
+            return E_POINTER;
 
         if (riid == __uuidof(IEVRPresenterCallback))
         {
             *pvObject = static_cast<IEVRPresenterCallback*>(this);
-
         }
         else if (riid == IID_IUnknown)
         {
@@ -75,7 +75,8 @@ public:
     virtual ULONG STDMETHODCALLTYPE Release(void)
     {
         long ref = _InterlockedDecrement(&_refCount);
-        if (ref == 0) delete this;
+        if (ref == 0)
+            delete this;
         return ref;
     }
 

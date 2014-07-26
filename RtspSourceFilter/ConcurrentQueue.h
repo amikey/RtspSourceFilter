@@ -80,8 +80,8 @@ public:
     bool try_pop_for(T& value, std::chrono::milliseconds duration)
     {
         std::unique_lock<mutex_type> lock(_mutex);
-        bool status = _condition_variable.wait_for(lock,
-            duration, [this]{ return !_queue.empty(); });
+        bool status = _condition_variable.wait_for(lock, duration, [this]
+                                                   { return !_queue.empty(); });
         if (!status || _queue.empty())
             return false;
         value = std::move(_queue.front());
@@ -96,7 +96,8 @@ public:
     void pop(T& value)
     {
         std::unique_lock<mutex_type> lock(_mutex);
-        _condition_variable.wait(lock, [this]{ return !_queue.empty(); });
+        _condition_variable.wait(lock, [this]
+                                 { return !_queue.empty(); });
         value = std::move(_queue.front());
         _queue.pop_front(); // calls dtor on "moved" front object
     }

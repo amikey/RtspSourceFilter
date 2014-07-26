@@ -15,8 +15,8 @@ public:
       */
     MediaPacketSample() {}
 
-    MediaPacketSample(std::uint8_t* buffer, size_t bufSize,
-        timeval presentationTime,  bool isRtcpSynced)
+    MediaPacketSample(std::uint8_t* buffer, size_t bufSize, timeval presentationTime,
+                      bool isRtcpSynced)
         : _buffer(buffer, buffer + bufSize)
         , _presentationTime(presentationTime)
         , _isRtcpSynced(isRtcpSynced)

@@ -26,6 +26,5 @@ protected:
 void DebugLog(const char* fmt, ...);
 #else
 typedef BasicUsageEnvironment MyUsageEnvironment;
-#define DebugLog(fmt, ...) 
+#define DebugLog(fmt, ...)
 #endif
-

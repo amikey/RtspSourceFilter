@@ -6,8 +6,8 @@
 
 namespace
 {
-    const uint8_t subWidthChroma[] = { 1, 2, 2, 1 };
-    const uint8_t subHeightChroma[] = { 1, 2, 1, 1 };
+    const uint8_t subWidthChroma[] = {1, 2, 2, 1};
+    const uint8_t subHeightChroma[] = {1, 2, 1, 1};
 }
 
 H264StreamParser::H264StreamParser(uint8_t* sps, unsigned spsSize)
@@ -15,20 +15,21 @@ H264StreamParser::H264StreamParser(uint8_t* sps, unsigned spsSize)
 {
     spsSize = removeH264or5EmulationBytes(_sps.data(), _sps.size(), sps, spsSize);
 
-    BitVector bv(_sps.data(), 0, spsSize*8);
+    BitVector bv(_sps.data(), 0, spsSize * 8);
     bv.skipBits(8); // forbidden_zero_bit; nal_ref_idc; nal_unit_type
     unsigned profile_idc = bv.getBits(8);
     bv.skipBits(8); // 6 constraint_setN_flag and "reserved_zero_2bits" at the end
     bv.skipBits(8); // level_idc
     unsigned seq_parameter_set_id = bv.get_expGolomb();
-    unsigned chroma_format_idc = 1; Boolean separate_colour_plane_flag = False;
+    unsigned chroma_format_idc = 1;
+    Boolean separate_colour_plane_flag = False;
     if (profile_idc == 100 || // High profile
         profile_idc == 110 || // High10 profile
         profile_idc == 122 || // High422 profile
         profile_idc == 244 || // High444 Predictive profile
-        profile_idc == 44  || // Cavlc444 profile
-        profile_idc == 83  || // Scalable Constrained High profile (SVC)
-        profile_idc == 86  || // Scalable High Intra profile (SVC)
+        profile_idc == 44 ||  // Cavlc444 profile
+        profile_idc == 83 ||  // Scalable Constrained High profile (SVC)
+        profile_idc == 86 ||  // Scalable High Intra profile (SVC)
         profile_idc == 118 || // Stereo High profile (MVC)
         profile_idc == 128 || // Multiview High profile (MVC)
         profile_idc == 138 || // Multiview Depth High profile (MVCD)
@@ -39,7 +40,7 @@ H264StreamParser::H264StreamParser(uint8_t* sps, unsigned spsSize)
             separate_colour_plane_flag = bv.get1BitBoolean();
         bv.get_expGolomb(); // bit_depth_luma_minus8
         bv.get_expGolomb(); // bit_depth_chroma_minus8
-        bv.skipBits(1); // qpprime_y_zero_transform_bypass_flag
+        bv.skipBits(1);     // qpprime_y_zero_transform_bypass_flag
         Boolean seq_scaling_matrix_present_flag = bv.get1BitBoolean();
         if (seq_scaling_matrix_present_flag)
         {
@@ -73,7 +74,7 @@ H264StreamParser::H264StreamParser(uint8_t* sps, unsigned spsSize)
     }
     else if (pic_order_cnt_type == 1)
     {
-        bv.skipBits(1); // delta_pic_order_always_zero_flag
+        bv.skipBits(1);     // delta_pic_order_always_zero_flag
         bv.get_expGolomb(); // offset_for_non_ref_pic SIGNED!
         bv.get_expGolomb(); // offset_for_top_to_bottom_field SIGNED!
         unsigned num_ref_frames_in_pic_order_cnt_cycle = bv.get_expGolomb();
@@ -87,10 +88,10 @@ H264StreamParser::H264StreamParser(uint8_t* sps, unsigned spsSize)
     Boolean frame_mbs_only_flag = bv.get1BitBoolean();
     if (!frame_mbs_only_flag)
         bv.skipBits(1); // mb_adaptive_frame_field_flag
-    bv.skipBits(1); // direct_8x8_inference_flag
+    bv.skipBits(1);     // direct_8x8_inference_flag
     Boolean frame_cropping_flag = bv.get1BitBoolean();
-    unsigned frame_crop_left_offset = 0, frame_crop_right_offset = 0,
-             frame_crop_top_offset = 0, frame_crop_bottom_offset = 0;
+    unsigned frame_crop_left_offset = 0, frame_crop_right_offset = 0, frame_crop_top_offset = 0,
+             frame_crop_bottom_offset = 0;
     if (frame_cropping_flag)
     {
         frame_crop_left_offset = bv.get_expGolomb();
@@ -99,14 +100,9 @@ H264StreamParser::H264StreamParser(uint8_t* sps, unsigned spsSize)
         frame_crop_bottom_offset = bv.get_expGolomb();
     }
 
-    /*
-    _width = ((pic_width_in_mbs_minus1 + 1) * 16) - frame_crop_left_offset * 2 - frame_crop_right_offset * 2;
-    _height = ((2 - frame_mbs_only_flag)* (pic_height_in_map_units_minus1 + 1) * 16) - (frame_crop_top_offset * 2) - (frame_crop_bottom_offset * 2);
-    */
-
     // Formula taken from MediaInfo
-    _width = (pic_width_in_mbs_minus1 + 1)*16;
-    _height = (pic_height_in_map_units_minus1 + 1)*16 * (2 - frame_mbs_only_flag);
+    _width = (pic_width_in_mbs_minus1 + 1) * 16;
+    _height = (pic_height_in_map_units_minus1 + 1) * 16 * (2 - frame_mbs_only_flag);
     unsigned chromaArrayType = separate_colour_plane_flag ? 0 : chroma_format_idc;
     unsigned cropUnitX = subWidthChroma[chromaArrayType];
     unsigned cropUnitY = subHeightChroma[chromaArrayType] * (2 - frame_mbs_only_flag);
@@ -121,7 +117,7 @@ H264StreamParser::H264StreamParser(uint8_t* sps, unsigned spsSize)
         if (aspect_ratio_info_present_flag)
         {
             unsigned aspect_ratio_idc = bv.getBits(8);
-            if (aspect_ratio_idc == 255/*Extended_SAR*/)
+            if (aspect_ratio_idc == 255 /*Extended_SAR*/)
                 bv.skipBits(32); // sar_width(16); sar_height(16)
         }
         Boolean overscan_info_present_flag = bv.get1BitBoolean();
@@ -133,7 +129,8 @@ H264StreamParser::H264StreamParser(uint8_t* sps, unsigned spsSize)
             bv.skipBits(4); // video_format(3); video_full_range_flag(1)
             Boolean colour_description_present_flag = bv.get1BitBoolean();
             if (colour_description_present_flag)
-                bv.skipBits(24); // colour_primaries(8); transfer_characteristics(8); matrix_coefficients(8)
+                bv.skipBits(24); // colour_primaries(8); transfer_characteristics(8);
+                                 // matrix_coefficients(8)
         }
         Boolean chroma_loc_info_present_flag = bv.get1BitBoolean();
         if (chroma_loc_info_present_flag)
