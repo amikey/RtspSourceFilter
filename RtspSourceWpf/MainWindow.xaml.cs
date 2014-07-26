@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using RtspSourceWpf.Enums;
 
 namespace RtspSourceWpf
 {
@@ -33,7 +34,8 @@ namespace RtspSourceWpf
                 _player.Dispose();
             }
 
-            _player = new RtspPlayer(VideoRendererType.EnhancedVideoRenderer);
+            _player = new RtspPlayer(EDecoderType.MicrosoftVideoDecoder,
+                EVideoRendererType.EnhancedVideoRenderer);
             videoGrid.Children.Add(_player);
             _player.VerticalContentAlignment = System.Windows.VerticalAlignment.Stretch;
             _player.HorizontalContentAlignment = System.Windows.HorizontalAlignment.Stretch;

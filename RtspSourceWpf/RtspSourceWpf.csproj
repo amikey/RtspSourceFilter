@@ -86,7 +86,11 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="DirectShowSession.cs" />
     <Compile Include="DirectShow\VMR9Presenter.cs" />
+    <Compile Include="Enums\EDecoderType.cs" />
+    <Compile Include="Enums\EVideoRendererType.cs" />
+    <Compile Include="Enums\ESessionCommand.cs" />
     <Compile Include="IPresenter.cs" />
     <Compile Include="RtspPlayer.cs" />
     <Compile Include="DirectShow\EVR.cs" />
