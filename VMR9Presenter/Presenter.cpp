@@ -132,7 +132,6 @@ HRESULT VMR9CustomPresenter::CreateD3DDevice()
     if (!m_pD3D9)
     {
         return E_FAIL;
-        ;
     }
 
     HRESULT hr = S_OK;
