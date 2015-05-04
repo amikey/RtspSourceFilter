@@ -103,6 +103,7 @@ RtspSourceFilter::RtspSourceFilter(IUnknown* pUnk, HRESULT* phr)
     , _tunnelOverHttpPort(0U)
     , _autoReconnectionMSecs(0)
     , _latencyMSecs(defaultLatencyMSecs)
+    , _sendLivenessCommand(false)
     , _state(State::Initial)
     , _scheduler(BasicTaskScheduler::createNew())
     , _env(MyUsageEnvironment::createNew(*_scheduler))
@@ -314,6 +315,11 @@ void RtspSourceFilter::SetLatency(DWORD dwMSecs)
     // This value is only used for first packet synchronization
     // - either it's first RTCP synced or just the very first packet
     _latencyMSecs = dwMSecs;
+}
+
+void RtspSourceFilter::SetSendLivenessCommand(BOOL sendLiveness)
+{
+    _sendLivenessCommand = sendLiveness ? true : false;
 }
 
 RtspAsyncResult RtspSourceFilter::AsyncOpenUrl(const std::string& url)
@@ -623,8 +629,11 @@ void RtspSourceFilter::HandlePlayResponse(int resultCode, char* resultString)
         _interPacketGapCheckTimerTask = _scheduler->scheduleDelayedTask(
             interPacketGapMaxTime * 1000, &RtspSourceFilter::CheckInterPacketGaps, this);
         // Create timerTask for session keep-alive (use OPTIONS request to sustain session)
-        _livenessCommandTask = _scheduler->scheduleDelayedTask(
-            _sessionTimeout / 3 * 1000000, &RtspSourceFilter::SendLivenessCommand, this);
+        if (_sendLivenessCommand)
+        {
+            _livenessCommandTask = _scheduler->scheduleDelayedTask(
+                _sessionTimeout / 3 * 1000000, &RtspSourceFilter::SendLivenessCommand, this);
+        }
 
         if (_sessionDuration > 0)
         {
@@ -902,18 +911,17 @@ void RtspSourceFilter::SendLivenessCommand(void* clientData)
     _ASSERT(self->_state == State::Playing);
 
     self->_livenessCommandTask = nullptr;
-    self->_rtsp->sendOptionsCommand(HandleOptionsResponse, &self->_authenticator);
+    self->_rtsp->sendOptionsCommand(HandleOptionsResponse_Liveness, &self->_authenticator);
 }
 
-void RtspSourceFilter::HandleOptionsResponse(RTSPClient* client, int resultCode, char* resultString)
+void RtspSourceFilter::HandleOptionsResponse_Liveness(RTSPClient* client, int resultCode, char* resultString)
 {
-    // If something bad happens between OPTIONS request and response, response handler shouldn't be
-    // call
+    // If something bad happens between OPTIONS request and response, response handler shouldn't be call
     RtspClient* myClient = static_cast<RtspClient*>(client);
-    myClient->filter->HandleOptionsResponse(resultCode, resultString);
+    myClient->filter->HandleOptionsResponse_Liveness(resultCode, resultString);
 }
 
-void RtspSourceFilter::HandleOptionsResponse(int resultCode, char* resultString)
+void RtspSourceFilter::HandleOptionsResponse_Liveness(int resultCode, char* resultString)
 {
     _ASSERT(_state == State::Playing);
 

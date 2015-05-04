@@ -26,5 +26,8 @@ namespace RtspSourceWpf.DirectShow
 
         [PreserveSig]
         void SetLatency([In] uint dwMSecs);
+
+        [PreserveSig]
+        void SetSendLivenessCommand([In, MarshalAs(UnmanagedType.Bool)] bool sendLiveness);
     }
 }

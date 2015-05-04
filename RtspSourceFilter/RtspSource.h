@@ -52,6 +52,7 @@ public:
     STDMETHODIMP_(void) SetTunnelingOverHttpPort(WORD tunnelOverHttpPort);
     STDMETHODIMP_(void) SetAutoReconnectionPeriod(DWORD dwMSecs);
     STDMETHODIMP_(void) SetLatency(DWORD dwMSecs);
+    STDMETHODIMP_(void) SetSendLivenessCommand(BOOL sendLiveness);
 
     DECLARE_IUNKNOWN
 
@@ -81,7 +82,7 @@ private:
     void UnscheduleAllDelayedTasks();
 
     // Thin proxies for real handlers
-    static void HandleOptionsResponse(RTSPClient* client, int resultCode, char* resultString);
+    static void HandleOptionsResponse_Liveness(RTSPClient* client, int resultCode, char* resultString);
     static void HandleDescribeResponse(RTSPClient* client, int resultCode, char* resultString);
     static void HandleSetupResponse(RTSPClient* client, int resultCode, char* resultString);
     static void HandlePlayResponse(RTSPClient* client, int resultCode, char* resultString);
@@ -99,7 +100,7 @@ private:
     static void HandleMediaEnded(void* clientData);
 
     // "Real" handlers
-    void HandleOptionsResponse(int resultCode, char* resultString);
+    void HandleOptionsResponse_Liveness(int resultCode, char* resultString);
     void HandleDescribeResponse(int resultCode, char* resultString);
     void HandleSetupResponse(int resultCode, char* resultString);
     void HandlePlayResponse(int resultCode, char* resultString);
@@ -118,6 +119,7 @@ private:
     unsigned _autoReconnectionMSecs;
     std::mutex _criticalSection;
     uint32_t _latencyMSecs;
+    bool _sendLivenessCommand;
 
     // live555 stuff
     enum class State

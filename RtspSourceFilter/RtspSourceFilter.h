@@ -11,4 +11,5 @@ IRtspSourceConfig : public IUnknown
     STDMETHOD_(void, SetTunnelingOverHttpPort(WORD tunnelOverHttpPort)) = 0;
     STDMETHOD_(void, SetAutoReconnectionPeriod(DWORD dwMSecs)) = 0;
     STDMETHOD_(void, SetLatency(DWORD dwMSecs)) = 0;
+    STDMETHOD_(void, SetSendLivenessCommand(BOOL sendLiveness)) = 0;
 };

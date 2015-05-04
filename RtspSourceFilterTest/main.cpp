@@ -10,6 +10,8 @@
 #include "EVRPresenter.h"
 #include "VMR9Presenter.h"
 
+#include "../RtspSourceFilter/RtspSourceFilter.h"
+
 // {AF645432-7263-49C1-9FA3-E6DA0B346EAB}
 static const GUID CLSID_RtspSourceFilter = 
 { 0xaf645432, 0x7263, 0x49c1, { 0x9f, 0xa3, 0xe6, 0xda, 0xb, 0x34, 0x6e, 0xab } };
@@ -17,16 +19,6 @@ static const GUID CLSID_RtspSourceFilter =
 // {EE30215D-164F-4A92-A4EB-9D4C13390F9F}
 static const GUID CLSID_LAVVideo =
 { 0xEE30215D, 0x164F, 0x4A92, { 0xA4, 0xEB, 0x9D, 0x4C, 0x13, 0x39, 0x0F, 0x9F } };
-
-MIDL_INTERFACE("C4D310F4-160D-408D-9A60-3C6275E2D3B2")
-IRtspSourceConfig : public IUnknown
-{
-    STDMETHOD_(void, SetInitialSeekTime(DOUBLE secs)) = 0;
-    STDMETHOD_(void, SetStreamingOverTcp(BOOL streamOverTcp)) = 0;
-    STDMETHOD_(void, SetTunnelingOverHttpPort(WORD tunnelOverHttpPort)) = 0;
-    STDMETHOD_(void, SetAutoReconnectionPeriod(DWORD dwMSecs)) = 0;
-    STDMETHOD_(void, SetLatency(DWORD dwMSecs)) = 0;
-};
 
 #define USE_EVR
 
@@ -164,9 +156,8 @@ int main()
         pMediaEvent->GetEventHandle((OAEVENT*)&hMediaEvent);
 
         // Stop streaming from different thread using event for manual request
-        std::thread th([&]
-        {
-            std::this_thread::sleep_for(std::chrono::seconds(15));
+        std::thread th([&] {
+            std::this_thread::sleep_for(std::chrono::seconds(30));
             SetEvent(hManualRequest);
         });
         th.detach();
