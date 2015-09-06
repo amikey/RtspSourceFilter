@@ -31,6 +31,10 @@ public:
     {
     }
 
+    ~RtspAsyncRequest()
+    {
+    }
+
     /**
      * Construct an invalid RTSP request
      */

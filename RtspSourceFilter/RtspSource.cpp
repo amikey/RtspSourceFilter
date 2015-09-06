@@ -996,6 +996,8 @@ void RtspSourceFilter::WorkerThread()
         }
     };
 
+    RtspAsyncRequest req;
+
     while (!done)
     {
         // In the middle of request - ignore any incoming requests untill done
@@ -1004,8 +1006,6 @@ void RtspSourceFilter::WorkerThread()
             _scheduler->SingleStep();
             continue;
         }
-
-        RtspAsyncRequest req;
 
         if (!_requestQueue.try_pop(req))
         {
