@@ -149,8 +149,6 @@ int main()
         if (FAILED(hr))
             _com_issue_error(hr);
 
-        //MessageBoxA(NULL, "Blocking", "Blocking", MB_OK);
-
         HANDLE hManualRequest = CreateEventA(nullptr, TRUE, FALSE, nullptr);
         HANDLE hMediaEvent;
         pMediaEvent->GetEventHandle((OAEVENT*)&hMediaEvent);
